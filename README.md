@@ -29,11 +29,13 @@ Our unique approach redefines the traditional maker-taker flow, adapting it to b
 
 The core functionality of the Multipool Finance platform is encapsulated within three main contracts:
 
+```
 1. `src/PairFactory.sol`: This contract is responsible for deploying new pairs and managing variables such as fees and the ability to pause pairs. It acts as a factory for creating new trading pairs on the platform.
 
 2. `src/PairContract.sol`: This contract implements the `pricePool` and `cancelationTree`, and manages the order book for a specific pair. It is responsible for maintaining the state of each trading pair, including current orders and prices.
 
 3. `segmentTree.sol` (located in `src/lib`): This is a library contract that provides functionality for working with segment trees, a data structure that is used to managing cancellations tree for each `pricePool` and help us to design gas efficient on-chain Dex.
+```
 
 ![Multipool Finance](./doc/diagram-1.png)
 
@@ -48,3 +50,4 @@ you can find detailed technical documentation for each contract in the `doc` fol
 
 ## License
 <a name="license"></a>
+TBD
