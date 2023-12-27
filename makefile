@@ -56,6 +56,8 @@ deploy:
 
 install:
 	@echo "Installing dependencies..."
+	@echo "Installing forge..."
+	forge install
 	pip3 install slither-analyzer
 	@echo "remeber to add your pip3 bin to your PATH "
 	@echo "(add this line in your .zshrc or .bashrc `export PATH=$$PATH:~/Library/Python/3.9/bin`)"
