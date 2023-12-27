@@ -74,10 +74,18 @@ This project uses a Makefile for managing tasks. Here are the available commands
 <a name="contributing"></a>
 
 there is multiple way to contribute to this project:
-1. **Bug Reports**: If you encounter a bug, please open an issue describing the bug and how to reproduce it.
-2. **Feature Requests**: If you have an idea for a new feature, please open an issue describing the feature and how it should work.
-3. **Pull Requests**: If you would like to contribute to the project, please open a pull request with your changes. Please make sure to follow the guidelines below when creating a pull request.
-4. **Join the Team**: If you are interested in joining the team, please reach out to us.
+1. **Bug Reports**: 
+
+    If you encounter a bug, please open an issue describing the bug and how to reproduce it.
+2. **Feature Requests**: 
+
+    If you have an idea for a new feature, please open an issue describing the feature and how it should work.
+3. **Pull Requests**: 
+
+    If you would like to contribute to the project, please open a pull request with your changes. Please make sure to follow the guidelines below when creating a pull request.
+4. **Join the Team**: 
+        
+    If you are interested in joining the team, please reach out to us.
 
 ### Pull Request Guidelines
 1. **Branching and Commit Message Standards**
@@ -89,9 +97,15 @@ there is multiple way to contribute to this project:
      Commit messages should be descriptive and follow the format `[Type]`: `[Brief Description]`. The `[Type]` can be `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, or `chore`.
 
 ### Pull Request Flow
-* **New Branches:** Developers create new branches for each specific change and create a PR for that branch.
-* **Development Branch:** PRs from new branches are merged into the development branch. All test cases must pass, and the code coverage must be at least 60%.
-* **Master Branch:** After thorough testing and review, changes from the development branch are merged into the master branch.
+* **New Branches:** 
+    
+    Developers create new branches for each specific change and create a PR for that branch.
+* **Development Branch:** 
+
+    PRs from new branches are merged into the development branch. All test cases must pass, and the code coverage must be at least 60%.
+* **Master Branch:** 
+
+    After thorough testing and review, changes from the development branch are merged into the master branch.
 
 
 
