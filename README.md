@@ -47,6 +47,7 @@ you can find detailed technical documentation for each contract in the `doc` fol
 
 This project uses a Makefile for managing tasks. Here are the available commands:
 
+```
 - `make anvil`: This command will ask you if you want to fork a chain. If you choose "yes", you will be prompted to enter the RPC URL and Block Number. Then it will run the local network in fork mode. If you choose "no", it will run a simple local network.
 
 - `make test`: This command runs smart contract tests with Foundry.
@@ -64,6 +65,7 @@ This project uses a Makefile for managing tasks. Here are the available commands
 - `make snapshot`: This command creates a snapshot of gas usage.
 
 - `make interact`: This command provides instructions on how to interact with your deployed contract.
+```
 
 ### Rivet
 <a name="Rivet"></a>
