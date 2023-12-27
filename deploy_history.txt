@@ -1,0 +1,27 @@
+========================================================
+Deployment Date: Wed Dec 27 12:02:20 +04 2023 
+
+No files changed, compilation skipped
+Deployer: 0x039B6a1d40592AfA0847889cb487C47Fd3aa59fF
+Deployed to: 0x0d9e84d2Ff2ed97920d76Fb47006B29e6107626D
+Transaction hash: 0xcf5b7ff1d62f5747b7580235424b3a01f7100bb2909665437611145e3be91b12
+Starting contract verification...
+Waiting for etherscan to detect contract deployment...
+Start verifying contract `0x0d9e84d2Ff2ed97920d76Fb47006B29e6107626D` deployed on sepolia
+
+Submitting verification for [src/Counter.sol:Counter] 0x0d9e84d2Ff2ed97920d76Fb47006B29e6107626D.
+
+Submitting verification for [src/Counter.sol:Counter] 0x0d9e84d2Ff2ed97920d76Fb47006B29e6107626D.
+
+Submitting verification for [src/Counter.sol:Counter] 0x0d9e84d2Ff2ed97920d76Fb47006B29e6107626D.
+
+Submitting verification for [src/Counter.sol:Counter] 0x0d9e84d2Ff2ed97920d76Fb47006B29e6107626D.
+Submitted contract for verification:
+	Response: `OK`
+	GUID: `dey7eghpipf8rtv7gpbtgbw9vncq3g6q3njuzt5bvvnnbxkqzj`
+	URL:
+        https://sepolia.etherscan.io/address/0x0d9e84d2ff2ed97920d76fb47006b29e6107626d
+Contract source code already verified
+Constructor Arguments: 
+
+Deployment Note: test make file

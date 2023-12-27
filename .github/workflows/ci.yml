@@ -1,0 +1,64 @@
+name: ci
+
+on: 
+  pull_request: # only run on pull requests
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  check:
+    strategy:
+      fail-fast: true
+
+    name: Foundry project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Forge build
+        run: |
+          forge --version
+          forge build --sizes
+        id: build
+
+      - name: Run Forge tests
+        run: |
+          forge test -vvv
+        id: test
+
+      - name: Gas snapshot
+        id: snapshot
+        run: |
+          forge snapshot --diff --gas-report
+          
+      - name: Publish Gas snapshot
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          message: ${{ steps.snapshot.outputs.stdout }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Test coverage
+        id: coverage
+        run: |
+          forge coverage
+          
+      - name: Publish Test coverage
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          message: ${{ steps.coverage.outputs.stdout }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: run slither
+        id: slither
+        run: |
+          pip3 install slither-analyzer
+          slither ./src
