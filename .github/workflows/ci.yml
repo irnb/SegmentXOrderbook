@@ -54,7 +54,7 @@ jobs:
         id: comment
         run: |
           touch comment.md
-          echo "## 📈 Coverage Report" >> comment.md
+          echo "## 📈 Test Coverage Report" >> comment.md
           cat coverage_filtered.txt >> comment.md
           echo "## 🐍 Slither Report" >> comment.md
           echo "check the actions output for slither report" >> comment.md
