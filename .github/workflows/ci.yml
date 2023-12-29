@@ -11,6 +11,8 @@ jobs:
     strategy:
       fail-fast: true
 
+    permissions:
+      pull-requests: read
     name: Foundry project
     runs-on: ubuntu-latest
     steps:
