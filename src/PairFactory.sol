@@ -15,7 +15,13 @@ contract FactoryContract {
     error InvalidAddress(string addressType);
 
     // Function to create a new trading pair contract
-    function createPair(address baseToken, address quoteToken, address uniswapPairAddress, string memory uniswapVersion, uint256 initialPrice) public {
+    function createPair(
+        address baseToken,
+        address quoteToken,
+        address uniswapPairAddress,
+        string memory uniswapVersion,
+        uint256 initialPrice
+    ) public {
         // Validate that the provided addresses are not zero addresses
         if (baseToken == address(0)) {
             revert InvalidAddress("Base Token");

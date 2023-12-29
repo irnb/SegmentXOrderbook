@@ -16,7 +16,10 @@ contract PairContract {
     uint256 public initialPrice;
 
     // Order types for trading
-    enum OrderType { Buy, Sell }
+    enum OrderType {
+        Buy,
+        Sell
+    }
 
     // Custom error definitions for specific failure scenarios
     error Unauthorized();
@@ -51,11 +54,19 @@ contract PairContract {
     uint256 public orderCount;
 
     // Events for tracking order placements and claims
-    event OrderPlaced(uint256 indexed orderId, address indexed user, OrderType orderType, uint256 price, uint256 tokenAmount);
+    event OrderPlaced(
+        uint256 indexed orderId, address indexed user, OrderType orderType, uint256 price, uint256 tokenAmount
+    );
     event FundsClaimed(uint256 indexed orderId, address indexed user, uint256 amount);
 
     // Constructor to initialize the contract with token addresses, pair address, AMM version and initial price
-    constructor(address _baseToken, address _quoteToken, address _pairAddress, string memory _ammVersion, uint256 _initialPrice) {
+    constructor(
+        address _baseToken,
+        address _quoteToken,
+        address _pairAddress,
+        string memory _ammVersion,
+        uint256 _initialPrice
+    ) {
         baseToken = IERC20(_baseToken);
         quoteToken = IERC20(_quoteToken);
         pairAddress = _pairAddress;
@@ -107,7 +118,7 @@ contract PairContract {
     }
 
     // Internal function to match orders and update used liquidity
-        function matchOrder(OrderType _orderType, uint256 _price, uint256 _tokenAmount) internal {
+    function matchOrder(OrderType _orderType, uint256 _price, uint256 _tokenAmount) internal {
         PricePool storage pool = pricePools[_price];
 
         if (_orderType == OrderType.Buy) {
@@ -123,7 +134,6 @@ contract PairContract {
         }
     }
 
-
     // Function to claim funds for an order
     function claimFunds(uint256 orderId) public {
         Order storage order = orders[orderId];
@@ -132,9 +142,9 @@ contract PairContract {
 
         // Check if the order's liquidity has been used
         PricePool storage pool = pricePools[order.price];
-        bool isLiquidityUsed = (order.orderType == OrderType.Buy) 
-                            ? pool.usedSellLiquidity > order.poolPosition 
-                            : pool.usedBuyLiquidity > order.poolPosition;
+        bool isLiquidityUsed = (order.orderType == OrderType.Buy)
+            ? pool.usedSellLiquidity > order.poolPosition
+            : pool.usedBuyLiquidity > order.poolPosition;
         if (!isLiquidityUsed) revert InsufficientLiquidity();
 
         // Calculate the amount to transfer and execute the transfer
@@ -156,5 +166,4 @@ contract PairContract {
         // Emit an event for the funds claim
         emit FundsClaimed(orderId, order.user, amountToTransfer);
     }
-
 }
