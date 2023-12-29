@@ -26,7 +26,7 @@ deploy:
 	read deploy_local ; \
 	if [ "$$deploy_local" = "yes" ]; then \
 		echo "Please make sure you have a local network running on port 8545 (run 'make anvil' in a separate terminal)"; \
-		echo "Enter the path to the constructor arguments file (e.g., ./args): "; \
+		echo "Enter the path to the constructor arguments file (e.g., ./.args): "; \
 		read args_path; \
 		echo "Enter your private key: "; \
 		read private_key; \
