@@ -38,24 +38,23 @@ jobs:
       - name: Gas snapshot
         id: snapshot
         run: |
-          forge snapshot --diff --gas-report
+          forge snapshot --diff --gas-report > gas.txt
           
       - name: Publish Gas snapshot
         uses: thollander/actions-comment-pull-request@v2
         with:
-          message: echo "${{ steps.snapshot.outputs.stdout }}"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          filePath: gas.txt
           
       - name: Test coverage
         id: coverage
         run: |
-          forge coverage
+          forge coverage > coverage.txt
           
       - name: Publish Test coverage
         uses: thollander/actions-comment-pull-request@v2
         with:
-          message: echo "${{ steps.coverage.outputs.stdout }}"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          filePath: coverage.txt
+  
       
       - name: run slither
         id: slither
