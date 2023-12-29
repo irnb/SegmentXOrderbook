@@ -49,17 +49,23 @@ jobs:
         run: |
           forge coverage > coverage.txt
           sed -n '/|/,/Total/p' coverage.txt > coverage_filtered.txt
-          
+      
+      - name: Prepare comment
+        id: comment
+        run: |
+          touch comment.md
+          echo "## 📊 Gas Report" >> comment.md
+          cat gas_filtered.txt >> comment.md
+          echo "\n## 📈 Coverage Report" >> comment.md
+          cat coverage_filtered.txt >> comment.md
+          echo "\n## 🐍 Slither Report" >> comment.md
+          echo "check the actions output for slither report" >> comment.md
+
       - name: Publish Comment
         uses: thollander/actions-comment-pull-request@v2
         with:
-          message: |
-            echo "## 📊 Gas Report"
-            cat gas_filtered.txt
-            echo "## 📈 Coverage Report"
-            cat coverage_filtered.txt
-            echo "## 🐍 Slither Report"
-            echo "check the actions output for slither report"
+          filePath: comment.md
+
   
       
       - name: run slither
