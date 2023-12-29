@@ -1,4 +1,4 @@
-.PHONY: test anvil deploy install slither format clean interact
+.PHONY: test anvil deploy install slither format clean interact compile
 
 anvil:
 	@echo "Do you want to fork a chain? [yes/no]: "; \
@@ -85,3 +85,7 @@ interact:
 	@echo "4- input the contract address and the ABI"
 	@echo "*** instead of above approach you can use the Rivet contract section too ***"
 	@echo "you can find the ABI in the out directory"
+
+compile:
+	@echo "Compiling contracts..."
+	forge compile
