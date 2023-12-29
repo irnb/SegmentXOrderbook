@@ -67,6 +67,13 @@ This project uses a Makefile for managing tasks. Here are the available commands
 - `make interact`: This command provides instructions on how to interact with your deployed contract.
 ```
 
+
+
+
+If you are using VSCode, refer to the following link for guidance on handling Foundry remapping:
+
+> https://github.com/foundry-rs/foundry/issues/2019#issuecomment-1191392804\
+
 ### Rivet
 <a name="Rivet"></a>
 

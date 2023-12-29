@@ -15,3 +15,5 @@ docs/
 
 # Deployment Args
 .args
+
+.vscode

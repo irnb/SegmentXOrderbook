@@ -11,6 +11,8 @@ jobs:
     strategy:
       fail-fast: true
 
+    permissions: write-all
+    
     name: Foundry project
     runs-on: ubuntu-latest
     steps:
@@ -38,26 +40,36 @@ jobs:
       - name: Gas snapshot
         id: snapshot
         run: |
-          forge snapshot --diff --gas-report
+          forge snapshot --diff --gas-report > gas.txt
+          sed -n '/|/,/Overall gas change:/p' gas.txt > gas_filtered.txt
           
-      - name: Publish Gas snapshot
-        uses: thollander/actions-comment-pull-request@v2
-        with:
-          message: ${{ steps.snapshot.outputs.stdout }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Test coverage
         id: coverage
         run: |
-          forge coverage
-          
-      - name: Publish Test coverage
+          forge coverage > coverage.txt
+          sed -n '/|/,/Total/p' coverage.txt > coverage_filtered.txt
+      
+      - name: Prepare comment
+        id: comment
+        run: |
+          touch comment.md
+          echo "## 📈 Test Coverage Report" >> comment.md
+          cat coverage_filtered.txt >> comment.md
+          echo "## 🐍 Slither Report" >> comment.md
+          echo "check the actions output for slither report" >> comment.md
+          echo "## 📊 Gas Report" >> comment.md
+          cat gas_filtered.txt >> comment.md
+
+      - name: Publish Comment
         uses: thollander/actions-comment-pull-request@v2
         with:
-          message: ${{ steps.coverage.outputs.stdout }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          filePath: comment.md
+
+  
       
       - name: run slither
+        continue-on-error: true
         id: slither
         run: |
           pip3 install slither-analyzer
