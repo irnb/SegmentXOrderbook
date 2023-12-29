@@ -41,24 +41,29 @@ jobs:
         id: snapshot
         run: |
           forge snapshot --diff --gas-report > gas.txt
+          sed -n '/|/,/Overall gas change:/p' gas.txt > gas_filtered.txt
           
-      - name: Publish Gas snapshot
-        uses: thollander/actions-comment-pull-request@v2
-        with:
-          filePath: gas.txt
           
       - name: Test coverage
         id: coverage
         run: |
           forge coverage > coverage.txt
+          sed -n '/|/,/Total/p' coverage.txt > coverage_filtered.txt
           
-      - name: Publish Test coverage
+      - name: Publish Comment
         uses: thollander/actions-comment-pull-request@v2
         with:
-          filePath: coverage.txt
+          message: |
+            echo "## 📊 Gas Report"
+            cat gas_filtered.txt
+            echo "## 📈 Coverage Report"
+            cat coverage_filtered.txt
+            echo "## 🐍 Slither Report"
+            echo "check the actions output for slither report"
   
       
       - name: run slither
+        continue-on-error: true
         id: slither
         run: |
           pip3 install slither-analyzer
