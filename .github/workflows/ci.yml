@@ -56,9 +56,11 @@ jobs:
           touch comment.md
           echo "## 📊 Gas Report" >> comment.md
           cat gas_filtered.txt >> comment.md
-          echo "\n## 📈 Coverage Report" >> comment.md
+          echo "---" >> comment.md
+          echo "## 📈 Coverage Report" >> comment.md
           cat coverage_filtered.txt >> comment.md
-          echo "\n## 🐍 Slither Report" >> comment.md
+          echo "---" >> comment.md
+          echo "## 🐍 Slither Report" >> comment.md
           echo "check the actions output for slither report" >> comment.md
 
       - name: Publish Comment
