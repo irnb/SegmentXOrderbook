@@ -43,7 +43,7 @@ jobs:
       - name: Publish Gas snapshot
         uses: thollander/actions-comment-pull-request@v2
         with:
-          message: ${{ steps.snapshot.outputs.stdout }}
+          message: echo "${{ steps.snapshot.outputs.stdout }}"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Test coverage
@@ -54,7 +54,7 @@ jobs:
       - name: Publish Test coverage
         uses: thollander/actions-comment-pull-request@v2
         with:
-          message: ${{ steps.coverage.outputs.stdout }}
+          message: echo "${{ steps.coverage.outputs.stdout }}"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: run slither
