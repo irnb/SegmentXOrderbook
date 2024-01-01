@@ -172,6 +172,8 @@ contract PairContract {
             pool.totalSellLiquidity += _tokenAmount;
         }
 
+        //@audit in the Order struct we does not need the orderCount because we have it in the 
+        //order mapping and its duplicated data and kinda we does not need to it.
         // Record the order
         orders[orderCount] =
             Order(orderCount, msg.sender, _orderType, _price, _tokenAmount, poolPosition, false);
