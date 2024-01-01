@@ -122,7 +122,21 @@ contract PairContract {
     External Functions
     */
 
-    function cancelOrder(uint256 _orderID) external {}
+    //@audit we can have modifire for the order validity for cancel and claim
+    // basic check
+
+    //@audit for implementing the cancel that stroe the cancelation in the segment tree 
+    // and it usage in the claim order we need to revise on the order ide and pool position
+    // becaue our current orderID is not effect on the poolPrice and we should fix it first
+    function cancelOrder(uint256 _orderID) external {
+        Order storage order = orders[_orderID];
+        if (msg.sender != order.user) revert Unauthorized();
+        if (order.isClaimed) revert AlreadyClaimed();
+
+
+
+
+    }
 
     /*
     Public Functions
