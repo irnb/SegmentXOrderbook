@@ -64,7 +64,7 @@ contract PairContract {
 
     uint256 public orderCount;
 
-    SegmentedSegmentTree.Core private cancelationTree;
+    SegmentedSegmentTree.Core private cancellationTree;
 
     mapping(uint256 => SegmentedSegmentTree.Core) private pricePoolsCancellationTree;
 
@@ -122,12 +122,12 @@ contract PairContract {
     External Functions
     */
 
-    //@audit we can have modifire for the order validity for cancel and claim
+    //@audit we can have modifier for the order validity for cancel and claim
     // basic check
 
-    //@audit for implementing the cancel that stroe the cancelation in the segment tree 
+    //@audit for implementing the cancel that store the cancellation in the segment tree 
     // and it usage in the claim order we need to revise on the order ide and pool position
-    // becaue our current orderID is not effect on the poolPrice and we should fix it first
+    // because our current orderID is not effect on the poolPrice and we should fix it first
     function cancelOrder(uint256 _orderID) external {
         Order storage order = orders[_orderID];
         if (msg.sender != order.user) revert Unauthorized();
@@ -149,7 +149,7 @@ contract PairContract {
     //@audit why createPricePool and placeOrder and claimFunds functions are public 
     // not external?
 
-    //@audit what is the perpuse of this function?
+    //@audit what is the purpose of this function?
     //@audit the check is not correct, because when we create a new pricePool its with 
     //the zero value and the first check again get failed when we call this function
     // twice in raw it create twice the same pricePool without telling its already exist
