@@ -1,4 +1,4 @@
-.PHONY: test anvil deploy install slither format clean interact compile
+.PHONY: test anvil deploy install slither lint clean interact compile
 
 anvil:
 	@echo "Do you want to fork a chain? [yes/no]: "; \
@@ -66,7 +66,7 @@ slither:
 	@echo "Running Slither..."
 	slither ./src
 
-format:
+lint:
 	@echo "Formatting code..."
 	forge fmt 
 
