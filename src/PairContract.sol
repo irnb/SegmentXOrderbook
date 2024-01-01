@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./lib/mvp/SegmentedSegmentTree.sol";
 
 contract PairContract {
-
     using SegmentedSegmentTree for SegmentedSegmentTree.Core;
 
     /* 
@@ -67,8 +66,7 @@ contract PairContract {
 
     SegmentedSegmentTree.Core private cancelationTree;
 
-    mapping (uint256 =>  SegmentedSegmentTree.Core) private pricePoolsCancellationTree;
-
+    mapping(uint256 => SegmentedSegmentTree.Core) private pricePoolsCancellationTree;
 
     /*
     Errors:
@@ -120,14 +118,11 @@ contract PairContract {
         initialPrice = _initialPrice;
     }
 
-
     /*
     External Functions
     */
 
-    function cancelOrder(uint256 _orderID) external {
-
-    }
+    function cancelOrder(uint256 _orderID) external {}
 
     /*
     Public Functions
@@ -137,7 +132,10 @@ contract PairContract {
 
     */
 
-    
+    //@audit what is the perpuse of this function?
+    //@audit the check is not correct, because when we create a new pricePool its with 
+    //the zero value and the first check again get failed when we call this function
+    // twice in raw it create twice the same pricePool without telling its already exist
     function createPricePool(uint256 _poolPrice) public {
         if (_poolPrice % (initialPrice / 1000) != 0) {
             revert InvalidPoolPrice();
@@ -240,5 +238,4 @@ contract PairContract {
     }
 
     // Private Functions
-
 }

@@ -3,18 +3,18 @@
 
 // -----------------------------------------------------------------------------------------
 // This Solidity code incorporates the Segmented Segment Tree library developed by Clober.
-// It is being used by Multipool Finance solely for the purpose of developing a Minimum 
-// Viable Product (MVP) and for testing on a blockchain testnet. This use is in accordance 
-// with the licensing terms provided by Clober, which permits non-commercial, non-production 
+// It is being used by Multipool Finance solely for the purpose of developing a Minimum
+// Viable Product (MVP) and for testing on a blockchain testnet. This use is in accordance
+// with the licensing terms provided by Clober, which permits non-commercial, non-production
 // usage of their software.
 //
-// It is important to note that this implementation is intended for testing and validation 
-// purposes only, and will not be used in the production environment. Multipool Finance 
-// intends to develop and implement our own code for this concept for production purposes, 
+// It is important to note that this implementation is intended for testing and validation
+// purposes only, and will not be used in the production environment. Multipool Finance
+// intends to develop and implement our own code for this concept for production purposes,
 // with a unique approach, post the MVP phase.
 //
-// This comment serves to clarify the scope and limitations of the current usage of Clober's 
-// library under the given license and to assert our commitment to adhering to the licensing 
+// This comment serves to clarify the scope and limitations of the current usage of Clober's
+// library under the given license and to assert our commitment to adhering to the licensing
 // terms while using Clober's intellectual property.
 // -----------------------------------------------------------------------------------------
 
@@ -22,6 +22,7 @@ pragma solidity ^0.8.0;
 
 library DirtyUint64 {
     error DirtyUint64Error(uint256 errorCode);
+
     uint256 private constant _OVERFLOW_ERROR = 0;
     uint256 private constant _UNDERFLOW_ERROR = 1;
 
@@ -86,11 +87,11 @@ library DirtyUint64 {
         }
     }
 
-    function sumPackedUnsafe(
-        uint256 packed,
-        uint256 from,
-        uint256 to
-    ) internal pure returns (uint64 ret) {
+    function sumPackedUnsafe(uint256 packed, uint256 from, uint256 to)
+        internal
+        pure
+        returns (uint64 ret)
+    {
         packed = packed >> (from << 6);
         unchecked {
             for (uint256 i = from; i < to; ++i) {
