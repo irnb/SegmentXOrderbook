@@ -132,6 +132,9 @@ contract PairContract {
 
     */
 
+    //@audit why createPricePool and placeOrder and claimFunds functions are public 
+    // not external?
+
     //@audit what is the perpuse of this function?
     //@audit the check is not correct, because when we create a new pricePool its with 
     //the zero value and the first check again get failed when we call this function
