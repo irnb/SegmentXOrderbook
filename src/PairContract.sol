@@ -2,8 +2,12 @@
 pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./lib/mvp/SegmentedSegmentTree.sol";
 
 contract PairContract {
+
+    using SegmentedSegmentTree for SegmentedSegmentTree.Core;
+
     /* 
     Structs & Enums
         1. OrderType: 
@@ -61,6 +65,11 @@ contract PairContract {
 
     uint256 public orderCount;
 
+    SegmentedSegmentTree.Core private cancelationTree;
+
+    mapping (uint256 =>  SegmentedSegmentTree.Core) private pricePoolsCancellationTree;
+
+
     /*
     Errors:
         1. Unauthorized():
@@ -111,9 +120,14 @@ contract PairContract {
         initialPrice = _initialPrice;
     }
 
-    // Fallback/Receive Functions
 
-    // External Functions
+    /*
+    External Functions
+    */
+
+    function cancelOrder(uint256 _orderID) external {
+
+    }
 
     /*
     Public Functions
@@ -123,6 +137,7 @@ contract PairContract {
 
     */
 
+    
     function createPricePool(uint256 _poolPrice) public {
         if (_poolPrice % (initialPrice / 1000) != 0) {
             revert InvalidPoolPrice();
@@ -169,7 +184,6 @@ contract PairContract {
         orderCount++;
     }
 
-    // Function to claim funds for an order
     function claimFunds(uint256 orderId) public {
         Order storage order = orders[orderId];
         if (msg.sender != order.user) revert Unauthorized();
@@ -202,9 +216,11 @@ contract PairContract {
         emit FundsClaimed(orderId, order.user, amountToTransfer);
     }
 
-    // Internal Functions
+    /*
+    Internal Functions
+        1. matchOrder: Internal function to match orders and update used liquidity
+    */
 
-    // Internal function to match orders and update used liquidity
     function matchOrder(OrderType _orderType, uint256 _price, uint256 _tokenAmount) internal {
         PricePool storage pool = pricePools[_price];
 
@@ -222,6 +238,7 @@ contract PairContract {
             pool.usedBuyLiquidity += amountToMatch;
         }
     }
+
     // Private Functions
 
 }
