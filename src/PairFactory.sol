@@ -5,7 +5,9 @@ import "./PairContract.sol";
 
 contract FactoryContract {
     // Event emitted when a new pair is created
-    event PairCreated(address indexed baseToken, address indexed quoteToken, address pairAddress, string version);
+    event PairCreated(
+        address indexed baseToken, address indexed quoteToken, address pairAddress, string version
+    );
 
     // Mapping to track deployed pairs with a unique identifier
     mapping(bytes32 => address) public deployedPairs;
@@ -42,7 +44,9 @@ contract FactoryContract {
         }
 
         // Create a new PairContract with the provided details, including the initial price
-        PairContract newPair = new PairContract(baseToken, quoteToken, uniswapPairAddress, uniswapVersion, initialPrice);
+        PairContract newPair = new PairContract(
+            baseToken, quoteToken, uniswapPairAddress, uniswapVersion, initialPrice
+        );
 
         // Store the address of the new PairContract in the mapping
         deployedPairs[pairKey] = address(newPair);
