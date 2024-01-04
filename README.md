@@ -1,6 +1,9 @@
+[![Whitepaper](https://img.shields.io/badge/WhitePaper-Link-blue)](https://whitepaper.multipool.finance/)
+[![CI (Compile, Test, ...)](https://github.com/Multipool-Finance/core/actions/workflows/ci.yml/badge.svg)](https://github.com/Multipool-Finance/core/actions/workflows/ci.yml)
+[![Discord](https://img.shields.io/static/v1?logo=discord&label=discord&message=Join&color=blue)](https://discord.gg/TBD)
+[![Twitter](https://img.shields.io/static/v1?logo=twitter&label=twitter&message=Follow&color=blue)](https://twitter.com/multipoolfi)
+
 # MultiPool Finance SmartContracts
-
-
 
 ![Multipool Finance](./doc/cover.webp)
 
@@ -58,7 +61,7 @@ This project uses a Makefile for managing tasks. Here are the available commands
 
 - `make slither`: This command runs Slither, a Solidity static analysis framework.
 
-- `make format`: This command formats the code style.
+- `make lint`: This command make standard formats for the code style.
 
 - `make clean`: This command cleans up the build and out directory.
 
