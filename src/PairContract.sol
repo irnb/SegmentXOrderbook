@@ -125,17 +125,13 @@ contract PairContract {
     //@audit we can have modifier for the order validity for cancel and claim
     // basic check
 
-    //@audit for implementing the cancel that store the cancellation in the segment tree 
+    //@audit for implementing the cancel that store the cancellation in the segment tree
     // and it usage in the claim order we need to revise on the order ide and pool position
     // because our current orderID is not effect on the poolPrice and we should fix it first
     function cancelOrder(uint256 _orderID) external {
         Order storage order = orders[_orderID];
         if (msg.sender != order.user) revert Unauthorized();
         if (order.isClaimed) revert AlreadyClaimed();
-
-
-
-
     }
 
     /*
@@ -146,11 +142,11 @@ contract PairContract {
 
     */
 
-    //@audit why createPricePool and placeOrder and claimFunds functions are public 
+    //@audit why createPricePool and placeOrder and claimFunds functions are public
     // not external?
 
     //@audit what is the purpose of this function?
-    //@audit the check is not correct, because when we create a new pricePool its with 
+    //@audit the check is not correct, because when we create a new pricePool its with
     //the zero value and the first check again get failed when we call this function
     // twice in raw it create twice the same pricePool without telling its already exist
     function createPricePool(uint256 _poolPrice) public {
@@ -189,7 +185,7 @@ contract PairContract {
             pool.totalSellLiquidity += _tokenAmount;
         }
 
-        //@audit in the Order struct we does not need the orderCount because we have it in the 
+        //@audit in the Order struct we does not need the orderCount because we have it in the
         //order mapping and its duplicated data and kinda we does not need to it.
         // Record the order
         orders[orderCount] =
