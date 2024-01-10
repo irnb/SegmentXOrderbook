@@ -128,6 +128,7 @@ contract PairContract {
     //@audit for implementing the cancel that store the cancellation in the segment tree
     // and it usage in the claim order we need to revise on the order ide and pool position
     // because our current orderID is not effect on the poolPrice and we should fix it first
+    //@audit id in the orderPricepool should be determined and seqeuntion for each bid and ask
     function cancelOrder(uint256 _orderID) external {
         Order storage order = orders[_orderID];
         if (msg.sender != order.user) revert Unauthorized();
