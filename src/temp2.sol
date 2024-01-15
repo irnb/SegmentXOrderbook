@@ -64,9 +64,17 @@ contract Pair {
 
     /// @dev `pricePointOrderCounts` priceStep => offset => cancellationTree
     mapping(uint256 => mapping(uint16 => SegmentedSegmentTree.Core)) private
-        _pricePointCancellationTrees;
+        _pricePointBuyCancellationTrees;
+    
+    /// @dev `pricePointOrderCounts` priceStep => offset => cancellationTree
+    mapping(uint256 => mapping(uint16 => SegmentedSegmentTree.Core)) private
+        _pricePointSellCancellationTrees;
+
     /// @dev `offsetAggregatedCancellationTrees`  Aggregate cancellation tree => priceStep => cancellationTree
-    mapping(uint256 => SegmentedSegmentTree.Core) private _offsetAggregatedCancellationTrees;
+    mapping(uint256 => SegmentedSegmentTree.Core) private _offsetAggregatedBuyCancellationTrees;
+
+    /// @dev `offsetAggregatedCancellationTrees`  Aggregate cancellation tree => priceStep => cancellationTree
+    mapping(uint256 => SegmentedSegmentTree.Core) private _offsetAggregatedSellCancellationTrees;
 
     address public governanceTreasury;
 
