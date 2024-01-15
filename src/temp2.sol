@@ -88,7 +88,7 @@ contract Pair {
 
         makerFee = makerFee_;
         takerFee = takerFee_;
-        
+
         governanceTreasury = governanceTreasury_;
     }
 
@@ -108,6 +108,8 @@ contract Pair {
     /// (the events contain the orderId)
     /// if there was any remaining amount, we add it to the order book (updating the price point and adding the
     /// order to orders mapping and updating the order count) and emit the maker events (the events contain the orderId)
+    /// @dev we need to pay attention to the maximum amount and price for keeping the integrity in the case of canceling the order
+
     function insertLimitOrder(bool isBuy, uint256 price, uint256 amount) external {}
 
     /// @notice insert a market order
@@ -125,6 +127,7 @@ contract Pair {
     /// and again check if it was enough to fill the order or not
     /// if it was enough, we do the same as above and update the all the price points we checked
     /// if it was not enough, we continue checking till we get to the max price the user specified and if we didn't find enough liquidity, we revert
+    /// @dev we need to pay attention to the maximum amount and price for keeping the integrity in the case of canceling the order
     function insertMarketOrder(bool isBuy, uint256 amount, uint256 maxPrice) external {}
 
     /// @notice claim the filled order
@@ -170,7 +173,6 @@ contract Pair {
     /// and we should update the related state variables
     function collectFees() external {}
 
-
     /// @notice update the fees
     /// @param makerFee_ The new maker fee
     /// @param takerFee_ The new taker fee
@@ -178,11 +180,73 @@ contract Pair {
     /// then we update the maker and taker fees
     function updateFees(uint24 makerFee_, uint24 takerFee_) external {}
 
-    
+    /// VIEW FUNCTIONS ///
+
+    /// @notice is the order claimable or not
+    /// @param orderId The id of the order to check
+    function isClaimable(uint256 orderId) external view returns (bool) {}
+
+    /// @notice get the balance of collected fees
+    function getFeeBalance()
+        external
+        view
+        returns (uint256 quoteFeeBalance, uint256 baseFeeBalance)
+    {}
+
+    /// @notice get base token
+    function getBaseToken() external view returns (address) {}
+
+    /// @notice get quote token
+    function getQuoteToken() external view returns (address) {}
+
+    /// @notice get the price of latest trade
+    function getLatestTradePrice() external view returns (uint256) {}
+
+    /// @notice get the order by id
+    /// @param orderId The id of the order to get
+    function getOrder(uint256 orderId)
+        external
+        view
+        returns (
+            uint256 _orderIndexInPricePoint,
+            uint256 _preOrderLiquidityPosition,
+            uint256 _tokenAmount,
+            uint256 _price,
+            address _user,
+            bool _isBuy,
+            OrderStatus _status
+        )
+    {}
+
+    /// @notice get the price point by price
+    /// @param price The price of the price point to get
+    function getPricePoint(uint256 price)
+        external
+        view
+        returns (
+            uint256 _totalBuyLiquidity,
+            uint256 _totalSellLiquidity,
+            uint256 _usedBuyLiquidity,
+            uint256 _usedSellLiquidity,
+            uint256 _orderCount
+        )
+    {}
 
     /// INTERNAL FUNCTIONS ///
 
     function _getDecimalComplement(address token) internal view returns (uint256) {
         return 10 ** (18 - IERC20Metadata(token).decimals());
     }
+
+    function _scaleDown (
+        uint256 amount,
+        uint256 price,
+        uint256 precisionComplement
+    ) internal pure returns (uint64) {}
+
+    function _scaleUp (
+        uint256 amount,
+        uint256 price,
+        uint256 precisionComplement
+    ) internal pure returns (uint256) {}
 }
