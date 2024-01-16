@@ -102,90 +102,116 @@ contract Pair {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Insert a limit order
-    /// @param isBuy True if the order is a buy order, false if it is a sell order
-    /// @param price This represents the value of the base token in terms of the quote token.
-    /// For instance, in an ETH/USD pair with a price of 2000, 1 ETH is equivalent to 2000 USD.
-    /// In this Multipool version, the price is always determined by the quote token for both buy and sale orders.
-    /// @param amount The amount of the base token to buy or sell
-    /// @dev first we transfer the tokens the user wants to sell to the contract
-    /// if the order is a buy order, we transfer the quote token to the contract with the amount = price * amount
-    /// if the order is a sell order, we transfer the base token to the contract with the amount = amount
-    /// then we check for order matching at the same and if we need 5 better prices points to match the order
-    /// if it get matched, we transfer the tokens to the user and collect the taker fees and emit the taker events
-    /// (the events contain the orderId)
-    /// if there was any remaining amount, we add it to the order book (updating the price point and adding the
-    /// order to orders mapping and updating the order count) and emit the maker events (the events contain the orderId)
-    /// @dev we need to pay attention to the maximum amount and price for keeping the integrity in the case of canceling the order
-
+    /// @notice insertLimitOrder - Places a limit order in the trading system.
+    /// @param isBuy Indicates the order type: `true` for a buy order, `false` for a sell order.
+    /// @param price The price of the base token in terms of the quote token. 
+    ///              For a pair like ETH/USD, a price of 2000 means 1 ETH equals 2000 USD.
+    /// @param amount The quantity of the base token to be bought or sold.
+    /// @dev Order Processing Steps:
+    ///      1. Transfer the tokens the user wishes to trade to the contract.
+    ///         - For a buy order: Transfer the quote token to the contract. The transfer amount is calculated as `price * amount`.
+    ///         - For a sell order: Transfer the base token to the contract. The transfer amount is equal to `amount`.
+    ///      2. Check for a match in the order book. We look for matching orders at the current price point and up to 5 more favorable price points.
+    ///      3. If a match is found:
+    ///         - Execute the trade by transferring the corresponding tokens to the user.
+    ///         - Collect taker fees.
+    ///         - Emit taker events, which include the `orderId`.
+    ///      4. If there is any remaining amount that was not matched:
+    ///         - Add the remaining amount to the order book. This involves updating the price point and adding the order to the orders mapping, as well as updating the order count.
+    ///         - Emit maker events, which also include the `orderId`.
+    /// @dev Note: It's important to monitor the maximum amount and price to maintain integrity, especially when an order is canceled.
+    /// @dev Note: if we had limit taker order, we update the latest trade price
     function insertLimitOrder(bool isBuy, uint256 price, uint256 amount) external {}
 
-    /// @notice insert a market order
-    /// @param isBuy True if the order is a buy order, false if it is a sell order
-    /// @param amount The amount of the base token to buy or sell
-    /// @param maxPrice The maximum price the user is willing to pay for a buy order or
-    /// the minimum price the user is willing to accept for a sell order
-    /// @dev first we detect the side of the order (buy or sell) and the latest trade price
-    /// then we start checking for liquidity at the latest trade price and check its enough to fill the order or not
-    /// if it was enough, we calculate the amount of the user should pay
-    /// for buy orders, amount = amount * latestTradePrice and using the transferFrom to transfer this much of quote token from the user to the contract
-    /// for sell orders, amount = amount and using the transferFrom to transfer this much of base token from the user to the contract
-    /// then we transfer the tokens to the user and collect the taker fees and emit the taker events and update the price point
-    /// if it was not enough, we start checking for liquidity at the next price point and add the amount of the liquidity from previous price point we checked
-    /// and again check if it was enough to fill the order or not
-    /// if it was enough, we do the same as above and update the all the price points we checked
-    /// if it was not enough, we continue checking till we get to the max price the user specified and if we didn't find enough liquidity, we revert
-    /// @dev we need to pay attention to the maximum amount and price for keeping the integrity in the case of canceling the order
-    function insertMarketOrder(bool isBuy, uint256 amount, uint256 maxPrice) external {}
+    /// @notice insertMarketOrder - Submits a market order in the trading platform.
+    /// @param isBuy Indicates the order type: `true` for a buy order, `false` for a sell order.
+    /// @param amount The quantity of the base token to be bought or sold.
+    /// @param worstPrice For a buy order, it's the maximum price the user is willing to pay. 
+    ///                   For a sell order, it's the minimum price the user will accept.
+    /// @dev Execution Process:
+    ///      1. Determine the order type (buy or sell) and fetch the latest trade price.
+    ///      2. Check liquidity at the latest trade price to assess if it's sufficient to execute the order.
+    ///         - If enough liquidity is available:
+    ///           - For buy orders: Calculate `amount = amount * latestTradePrice`. Transfer the equivalent quote token from the user to the contract.
+    ///           - For sell orders: Transfer the stated base token amount from the user to the contract.
+    ///         - Execute the trade, transfer tokens to the user, collect taker fees, emit taker events, and update the price point.
+    ///      3. If liquidity is inadequate:
+    ///         - Sequentially check liquidity at subsequent price points, accumulating liquidity from each checked point.
+    ///         - If the aggregated liquidity meets the order requirements, execute as described above, updating all checked price points.
+    ///      4. If sufficient liquidity is not found up to the maxPrice, revert the transaction.
+    /// @dev Note: Market orders don't have an order ID. Therefore, `0` is used as the order ID in event emissions.
+    /// @dev Note: We should update the latest trade price
+    /// @dev Note: In the case of scenario 3, for calculating the amount that user should pay, we should use theses formulas:
+    ///           - For buy orders:  (liquidityInPricePoint0 * PricePoint0 + liquidityInPricePoint1 * PricePoint1 + ... + liquidityInPricePointN * PricePointN)
+    ///           - For sell orders: (liquidityInPricePoint0 + liquidityInPricePoint1 + ... + liquidityInPricePointN)
+    function insertMarketOrder(bool isBuy, uint256 amount, uint256 worstPrice) external {}
 
-    /// @notice claim the filled order
-    /// @param orderId The id of the order to claim
-    /// @param user The user who wants to claim the order
-    /// @dev first we check the order status and it should be the open if it is not, we revert
-    /// then we fetch the order from the orders mapping and check if the user is the same as the msg sender
-    /// and now we should do some calculations to check the order is claimable or not (we discuss the calculations in the last line)
-    /// if the order was fully claimable we calculate the maker fees and then transfer the suitable token to the user
-    /// (buy orders: base token, sell orders: quote token) and collect the maker fees and emit the claim events and update the price point
-    /// if the order wasn't fully claimable we revert (for claiming the partial filled orders user can use the cancel order function)
-    /// the calculations:
-    ///     for buy orders:
-    ///         a. fetch the sum of the cancellation tree from 0 to the order index in the price point in the buy side
-    ///         b. first we scale up the result and then subtract the sum of the cancellation range result from the preOrderLiquidityPosition of the order to find real liquidity position start
-    ///         c. add the order amount to the real liquidity position start to find real liquidity position end
-    ///         d. check if the real liquidity position end is smaller than or equal with the usedBuyLiquidity in the price point
-    ///         e. if it was smaller, the order is fully claimable
-    ///     for sell orders: (the same as buy orders but in the sell side)
+    /// @notice claimFilledOrder - Claims a filled order from the trading system.
+    /// @param orderId The identifier of the order to be claimed.
+    /// @param user The user who owns the order.
+    /// @dev Process Overview:
+    ///      1. Verify the order status. It must be 'open'; otherwise, revert the transaction.
+    ///      2. Retrieve the specified order from the orders mapping.
+    ///      3. Perform calculations to determine if the order is fully claimable. (Details of these calculations are described below).
+    ///         - If the order is fully claimable:
+    ///           - Calculate maker fees.
+    ///           - Transfer the appropriate tokens to the user (base tokens for buy orders, quote tokens for sell orders).
+    ///           - Collect maker fees, emit claim events, and update the price point.
+    ///         - If the order is not fully claimable, revert the transaction. (Note: For claiming partially filled orders, users should use the cancel order function).
+    /// @dev Claimability Calculations:
+    ///      - For buy orders:
+    ///        a. Accumulate the cancellation tree sum from index 0 to the order's index at the buy side price point.
+    ///        b. Scale up the result, then deduct the sum of the cancellation range from the order's preOrderLiquidityPosition to find the start of the real liquidity position.
+    ///        c. Add the order amount to this real start point to determine the end of the real order liquidity position.
+    ///        d. Check if this end point is less than or equal to the usedBuyLiquidity at the price point.
+    ///        e. If it is, the order is fully claimable.
+    ///      - For sell orders:
+    ///        Follow the same steps as for buy orders, but apply them to the sell side.
     function claimOrder(uint256 orderId, address user) external {}
 
-    /// @notice cancel the order
-    /// @param orderId The id of the order to cancel
-    /// @dev first we check the order status and it should be the open if it is not, we revert
-    /// then we fetch the order from the orders mapping and check if the user is the same as the msg sender
-    /// now we should check the order is the claimable or not (we discuss the calculations in the claim order function)
-    /// based on the state of claimable, we should do different things:
-    ///     a. not claimable:
-    ///         in this case we should add the order amount and index to the cancellation tree
-    ///         and transfer the original amount of the order to the user and emit the cancel events
-    ///         before updating cancellation tree we should scale down the order amount we discuss about our scaling down method in the related method documentation
-    ///     b. fully claimable:
-    ///         in this case we act like the claim order function and we don't transfer the original amount of the order to the user
-    ///         and we don't add the order amount and index to the cancellation tree and also we should get taker fee and emit the claim events
-    ///     c. partially claimable:
-    ///         in this case we claim the part of the order get filled and we cancel the rest of the order and we emit the claim and cancel events and also we need to
-    ///         update the cancellation tree for the part of order it's not filled and get the taker fee for the part of order it's filled
+
+    /// @notice cancelOrder - Cancels an existing order in the trading system.
+    /// @param orderId The identifier of the order to be canceled.
+    /// @dev Execution Steps:
+    ///      1. Verify the order status. It must be 'open'; if not, revert the transaction.
+    ///      2. Retrieve the order from the orders mapping and ensure the caller (`msg.sender`) is the same as the order creator.
+    ///      3. Determine if the order is claimable (the calculation method is detailed in the claimOrder function).
+    ///      4. Based on the claimability of the order, perform the following actions:
+    ///         a. Not Claimable:
+    ///            - Scale down the order amount for cancellation tree update (scaling method detailed in related method documentation).
+    ///            - Add the order's amount and index to the cancellation tree.
+    ///            - Transfer the original order amount back to the user.
+    ///            - Emit cancel events.
+    ///         b. Fully Claimable:
+    ///            - Follow the procedure outlined in the claimOrder function.
+    ///            - Do not transfer the original order amount to the user.
+    ///            - Do not add to the cancellation tree.
+    ///            - Collect taker fees and emit claim events.
+    ///         c. Partially Claimable:
+    ///            - Claim the filled part of the order.
+    ///            - Cancel the unfilled portion.
+    ///            - Emit both claim and cancel events.
+    ///            - Update the cancellation tree for the unfilled part of the order.
+    ///            - Collect taker fees for the filled portion.
     function cancelOrder(uint256 orderId) external {}
 
-    /// @notice collect the fees
-    /// @dev first we check the msg sender is the governance treasury or not if it is not, we revert
-    /// then we transfer the fee collected in the form of quote and base token to the treasury.
-    /// and we should update the related state variables
+    /// @notice collectFees - Transfers collected fees to the governance treasury.
+    /// @dev Execution Steps:
+    ///      1. Verify the caller (`msg.sender`). The caller must be the governance treasury. If not, revert the transaction.
+    ///      2. Transfer the accumulated fees to the treasury. This includes fees in both quote and base token forms.
+    ///      3. Update relevant state variables to reflect the transfer of fees.
+    /// 
+    ///      Note: This function assumes the presence of mechanisms for fee accumulation and state variables tracking these fees.
     function collectFees() external {}
 
-    /// @notice update the fees
-    /// @param makerFee_ The new maker fee
-    /// @param takerFee_ The new taker fee
-    /// @dev first we check the msg sender is the governance treasury or not if it is not, we revert
-    /// then we update the maker and taker fees
+    /// @notice updateFees - Adjusts the maker and taker fees in the trading system.
+    /// @param makerFee_ The new fee to be set for makers.
+    /// @param takerFee_ The new fee to be set for takers.
+    /// @dev Execution Steps:
+    ///      1. Validate the caller (`msg.sender`). This action must be performed by the governance treasury. If not, revert the transaction.
+    ///      2. Update the maker and taker fees with the new values provided (makerFee_ and takerFee_).
+    /// 
+    ///      Note: This function is designed to be called by authorized personnel or systems (e.g., governance treasury) to adjust trading fees dynamically.
     function updateFees(uint24 makerFee_, uint24 takerFee_) external {}
 
     /// VIEW FUNCTIONS ///
