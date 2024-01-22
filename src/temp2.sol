@@ -75,7 +75,7 @@ contract Pair {
     /// @dev `pricePointOrderCounts` priceStep => offset => cancellationTree
     mapping(uint256 => mapping(uint16 => SegmentedSegmentTree.Core)) private
         _pricePointBuyCancellationTrees;
-    
+
     /// @dev `pricePointOrderCounts` priceStep => offset => cancellationTree
     mapping(uint256 => mapping(uint16 => SegmentedSegmentTree.Core)) private
         _pricePointSellCancellationTrees;
@@ -92,6 +92,8 @@ contract Pair {
 
     error ExceedWorstPrice(uint256 worstPrice, uint256 price);
     error NotEnoughLiquidity();
+    error InvalidOrderStatus(uint256 orderId, OrderStatus status);
+    error IsNotFullyClaimable();
 
     /// EVENTS ///
 
@@ -119,10 +121,10 @@ contract Pair {
     );
 
     /// @notice Emitted when a market order is placed using the `insertMarketOrder` method.
-    /// @dev For a market order, the `orderId` equals `orderCount` at the time of insertion, but unlike limit orders, market orders 
-    ///      are not stored in the orders mapping. The `orderId` solely serves as an identifier. The structure of `matchedPricePoints` 
-    ///      and `matchedAmounts` is akin to that in the `LimitOrderInserted` event. Market orders do not specify a price, as they are 
-    ///      executed at any available price for a set amount. The `worstPrice` parameter is the upper price limit acceptable to the user, 
+    /// @dev For a market order, the `orderId` equals `orderCount` at the time of insertion, but unlike limit orders, market orders
+    ///      are not stored in the orders mapping. The `orderId` solely serves as an identifier. The structure of `matchedPricePoints`
+    ///      and `matchedAmounts` is akin to that in the `LimitOrderInserted` event. Market orders do not specify a price, as they are
+    ///      executed at any available price for a set amount. The `worstPrice` parameter is the upper price limit acceptable to the user,
     ///      helping to mitigate potential user-side attack vectors.
     /// @param orderId Identifier for the order, corresponding to `orderCount` just before the order's insertion.
     /// @param user Address of the user who initiated the order.
@@ -141,11 +143,11 @@ contract Pair {
 
     /// @notice Emitted upon the cancellation of a limit order using the `cancelOrder` method.
     /// @dev Cancelling an order results in one of three scenarios:
-    ///      1. Non-Claimable Order: The order is entirely unmatched. The user gets the full original order amount back, 
+    ///      1. Non-Claimable Order: The order is entirely unmatched. The user gets the full original order amount back,
     ///         setting `receiveBackAmount` equal to this amount and `claimedAmount` to zero.
-    ///      2. Fully Claimable Order: The order is completely matched. The user receives the corresponding amount in the 
+    ///      2. Fully Claimable Order: The order is completely matched. The user receives the corresponding amount in the
     ///         alternate asset.
-    ///      3. Partially Claimable Order: The order is partially matched. The user receives the unmatched portion in the 
+    ///      3. Partially Claimable Order: The order is partially matched. The user receives the unmatched portion in the
     ///         original asset and the matched portion in the alternate asset.
     /// @param orderId The unique identifier of the order.
     /// @param user The address of the user who placed the order.
@@ -185,9 +187,6 @@ contract Pair {
     /// @param takerFee The new fee to be set for takers.
     event FeePolicyUpdated(uint24 makerFee, uint24 takerFee);
 
-
-
-
     constructor(
         address baseTokenAddress_,
         address quoteTokenAddress_,
@@ -214,7 +213,7 @@ contract Pair {
 
     /// @notice insertLimitOrder - Places a limit order in the trading system.
     /// @param isBuy Indicates the order type: `true` for a buy order, `false` for a sell order.
-    /// @param price The price of the base token in terms of the quote token. 
+    /// @param price The price of the base token in terms of the quote token.
     ///              For a pair like ETH/USD, a price of 2000 means 1 ETH equals 2000 USD.
     /// @param amount The quantity of the base token to be bought or sold.
     /// @dev Order Processing Steps:
@@ -239,7 +238,8 @@ contract Pair {
         token.safeTransferFrom(msg.sender, address(this), transferAmount);
 
         // Check for a match in the order book
-        MatchedPricePoint[] memory matchedPricePoints = _findMatchedPricePoints(isBuy, price, amount);
+        MatchedPricePoint[] memory matchedPricePoints =
+            _findMatchedPricePoints(isBuy, price, amount);
 
         uint256 remainingAmount = amount;
         uint256 matchedAmount = 0;
@@ -264,23 +264,18 @@ contract Pair {
             if (isBuy) {
                 matchedAmountForTransfer += matchedPricePoints[i].amount;
             } else {
-                matchedAmountForTransfer += matchedPricePoints[i].amount * matchedPricePoints[i].pricePoint;
+                matchedAmountForTransfer +=
+                    matchedPricePoints[i].amount * matchedPricePoints[i].pricePoint;
             }
         }
 
         if (remainingAmount > 0) {
             // update the price point
-            _updatePricePoint(
-                price,
-                remainingAmount,
-                isBuy,
-                PricePointDirection.Deposit
-            );
+            _updatePricePoint(price, remainingAmount, isBuy, PricePointDirection.Deposit);
 
             // add the order to the orders mapping
-            uint256 preOrderLiquidityPosition = isBuy
-                ? pricePoints[price].usedBuyLiquidity
-                : pricePoints[price].usedSellLiquidity;
+            uint256 preOrderLiquidityPosition =
+                isBuy ? pricePoints[price].usedBuyLiquidity : pricePoints[price].usedSellLiquidity;
             orders[orderCount] = Order(
                 pricePoints[price].orderCount,
                 preOrderLiquidityPosition,
@@ -300,21 +295,12 @@ contract Pair {
             latestTradePrice = matchedPricePoints[matchedPricePoints.length - 1].pricePoint;
 
             // Transfer matched tokens to the user and collect taker fees
-            _executeTakerOrder(
-                isBuy,
-                matchedAmountForTransfer
-            );
-
+            _executeTakerOrder(isBuy, matchedAmountForTransfer);
         }
 
         // Emit events
         emit LimitOrderInserted(
-            orderCount,
-            msg.sender,
-            price,
-            matchedPricePoints,
-            remainingAmount,
-            isBuy
+            orderCount, msg.sender, price, matchedPricePoints, remainingAmount, isBuy
         );
 
         // Update the order count
@@ -324,7 +310,7 @@ contract Pair {
     /// @notice insertMarketOrder - Submits a market order in the trading platform.
     /// @param isBuy Indicates the order type: `true` for a buy order, `false` for a sell order.
     /// @param amount The quantity of the base token to be bought or sold.
-    /// @param worstPrice For a buy order, it's the maximum price the user is willing to pay. 
+    /// @param worstPrice For a buy order, it's the maximum price the user is willing to pay.
     ///                   For a sell order, it's the minimum price the user will accept.
     /// @dev Execution Process:
     ///      1. Determine the order type (buy or sell) and fetch the latest trade price.
@@ -343,15 +329,11 @@ contract Pair {
     ///           - For buy orders:  (liquidityInPricePoint0 * PricePoint0 + liquidityInPricePoint1 * PricePoint1 + ... + liquidityInPricePointN * PricePointN)
     ///           - For sell orders: (liquidityInPricePoint0 + liquidityInPricePoint1 + ... + liquidityInPricePointN)
     function insertMarketOrder(bool isBuy, uint256 amount, uint256 worstPrice) external {
-        MatchedPricePoint[] memory matchedPricePoints = _findMatchedPricePoints(
-            isBuy,
-            latestTradePrice,
-            amount
-        );
+        MatchedPricePoint[] memory matchedPricePoints =
+            _findMatchedPricePoints(isBuy, latestTradePrice, amount);
 
         uint256 remainingAmount = amount;
         uint256 matchedAmountForTransfer = 0;
-
 
         for (uint8 i = 0; i < matchedPricePoints.length; i++) {
             if (matchedPricePoints[i].pricePoint > worstPrice) {
@@ -371,8 +353,8 @@ contract Pair {
 
             // update the matched amount for transfer
             if (isBuy) {
-                matchedAmountForTransfer += matchedPricePoints[i].amount * matchedPricePoints[i].pricePoint;
-
+                matchedAmountForTransfer +=
+                    matchedPricePoints[i].amount * matchedPricePoints[i].pricePoint;
             } else {
                 matchedAmountForTransfer += matchedPricePoints[i].amount;
             }
@@ -390,19 +372,11 @@ contract Pair {
         latestTradePrice = matchedPricePoints[matchedPricePoints.length - 1].pricePoint;
 
         // Transfer matched tokens to the user and collect taker fees
-        _executeTakerOrder(
-            isBuy,
-            amount
-        );
+        _executeTakerOrder(isBuy, amount);
 
         // Emit events
         emit MarketOrderInserted(
-            orderCount,
-            msg.sender,
-            amount,
-            matchedPricePoints,
-            worstPrice,
-            isBuy
+            orderCount, msg.sender, amount, matchedPricePoints, worstPrice, isBuy
         );
 
         // Update the order count
@@ -430,8 +404,39 @@ contract Pair {
     ///        e. If it is, the order is fully claimable.
     ///      - For sell orders:
     ///        Follow the same steps as for buy orders, but apply them to the sell side.
-    function claimOrder(uint256 orderId, address user) external {}
+    function claimOrder(uint256 orderId, address user) external {
+        Order memory order = orders[orderId];
 
+        if (order.status != OrderStatus.Open) {
+            revert InvalidOrderStatus(orderId, order.status);
+        }
+
+        (bool isFullyClaimable, uint256 claimableAmount) = _claimStatus(order);
+
+        if (!isFullyClaimable) {
+            revert IsNotFullyClaimable();
+        }
+
+        // update the price point
+        _updatePricePoint(order.price, order.tokenAmount, order.isBuy, PricePointDirection.Withdraw);
+
+        // update the order status
+        orders[orderId].status = OrderStatus.Claimed;
+
+        // transfer the tokens and take maker fees
+        uint256 fee = _executeClaimTransfer(order.isBuy, claimableAmount);
+
+        // Emit events
+
+        emit LimitMakerOrderClaimed(
+            orderId,
+            user,
+            order.price,
+            claimableAmount,
+            fee,
+            order.isBuy
+        );
+    }
 
     /// @notice cancelOrder - Cancels an existing order in the trading system.
     /// @param orderId The identifier of the order to be canceled.
@@ -463,7 +468,7 @@ contract Pair {
     ///      1. Verify the caller (`msg.sender`). The caller must be the governance treasury. If not, revert the transaction.
     ///      2. Transfer the accumulated fees to the treasury. This includes fees in both quote and base token forms.
     ///      3. Update relevant state variables to reflect the transfer of fees.
-    /// 
+    ///
     ///      Note: This function assumes the presence of mechanisms for fee accumulation and state variables tracking these fees.
     function collectFees() external {}
 
@@ -473,7 +478,7 @@ contract Pair {
     /// @dev Execution Steps:
     ///      1. Validate the caller (`msg.sender`). This action must be performed by the governance treasury. If not, revert the transaction.
     ///      2. Update the maker and taker fees with the new values provided (makerFee_ and takerFee_).
-    /// 
+    ///
     ///      Note: This function is designed to be called by authorized personnel or systems (e.g., governance treasury) to adjust trading fees dynamically.
     function updateFees(uint24 makerFee_, uint24 takerFee_) external {}
 
@@ -535,11 +540,10 @@ contract Pair {
         return 10 ** (18 - IERC20Metadata(token).decimals());
     }
 
-    function _findMatchedPricePoints(
-        bool isBuy,
-        uint256 price,
-        uint256 amount
-    ) internal returns (MatchedPricePoint[] memory) {}
+    function _findMatchedPricePoints(bool isBuy, uint256 price, uint256 amount)
+        internal
+        returns (MatchedPricePoint[] memory)
+    {}
 
     function _updatePricePoint(
         uint256 pricePoint,
@@ -548,17 +552,25 @@ contract Pair {
         PricePointDirection direction
     ) internal {}
 
-    function _executeTakerOrder(bool isBuy, uint256 amount) internal {}
+    function _executeTakerOrder(bool isBuy, uint256 amount) internal returns (uint256 fee) {}
 
-    function _scaleDown (
-        uint256 amount,
-        uint256 price,
-        uint256 precisionComplement
-    ) internal pure returns (uint64) {}
+    function _claimStatus(Order memory order)
+        internal
+        view
+        returns (bool isFullyClaimable, uint256 claimableAmount)
+    {}
 
-    function _scaleUp (
-        uint256 amount,
-        uint256 price,
-        uint256 precisionComplement
-    ) internal pure returns (uint256) {}
+    function _executeClaimTransfer(bool isBuy, uint256 amount) internal returns (uint256 fee) {}
+
+    function _scaleDown(uint256 amount, uint256 price, uint256 precisionComplement)
+        internal
+        pure
+        returns (uint64)
+    {}
+
+    function _scaleUp(uint256 amount, uint256 price, uint256 precisionComplement)
+        internal
+        pure
+        returns (uint256)
+    {}
 }
