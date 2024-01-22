@@ -78,6 +78,107 @@ contract Pair {
 
     address public governanceTreasury;
 
+    /// ERRORS ///
+
+    /// EVENTS ///
+
+    /// @notice Emitted when a user inserts a limit order via the `insertLimitOrder` method.
+    /// @dev This event denotes one of three possible outcomes when `insertLimitOrder` is invoked:
+    ///      1. Full Match: The order is completely matched, setting `remainingAmount` to 0. NOTE: `matchedPricePoints` and `matchedAmounts`
+    ///         detail the match, with each index in `matchedAmounts` corresponding to the same index in `matchedPricePoints`.
+    ///      2. Partial Match: The order is partially matched, leaving `remainingAmount` greater than 0. `matchedPricePoints` and `matchedAmounts`
+    ///         contain the partial match details.
+    ///      3. No Match: The order finds no match, keeping `remainingAmount` equal to the original order amount, and leaving `matchedPricePoints` and
+    ///         `matchedAmounts` arrays empty.
+    /// @param orderId Identifier for the order, equating to `orderCount` prior to the order's insertion.
+    /// @param user Address of the user who placed the order.
+    /// @param pricePoint Price set for the base token in terms of the quote token.
+    /// @param matchedPricePoints Array of price points where the order found a match.
+    /// @param matchedAmounts Array of amounts matched at each corresponding price point.
+    /// @param remainingAmount Unmatched amount of the order.
+    /// @param isBuy Boolean flag indicating the order type: `true` for buy, `false` for sell.
+    event LimitOrderInserted(
+        uint256 indexed orderId,
+        address indexed user,
+        uint256 pricePoint,
+        uint256[] matchedPricePoints,
+        uint256[] matchedAmounts,
+        uint256 remainingAmount,
+        bool isBuy
+    );
+
+    /// @notice Emitted when a market order is placed using the `insertMarketOrder` method.
+    /// @dev For a market order, the `orderId` equals `orderCount` at the time of insertion, but unlike limit orders, market orders 
+    ///      are not stored in the orders mapping. The `orderId` solely serves as an identifier. The structure of `matchedPricePoints` 
+    ///      and `matchedAmounts` is akin to that in the `LimitOrderInserted` event. Market orders do not specify a price, as they are 
+    ///      executed at any available price for a set amount. The `worstPrice` parameter is the upper price limit acceptable to the user, 
+    ///      helping to mitigate potential user-side attack vectors.
+    /// @param orderId Identifier for the order, corresponding to `orderCount` just before the order's insertion.
+    /// @param user Address of the user who initiated the order.
+    /// @param amount Desired transaction amount in the base token.
+    /// @param matchedPricePoints Array of price points at which the order matched.
+    /// @param matchedAmounts Array detailing the amounts matched at each price point.
+    /// @param worstPrice Maximum acceptable price set by the user for executing the order.
+    /// @param isBuy Boolean flag to indicate the order type: `true` for a buy order, `false` for a sell order.
+    event MarketOrderInserted(
+        uint256 indexed orderId,
+        address indexed user,
+        uint256 amount,
+        uint256[] matchedPricePoints,
+        uint256[] matchedAmounts,
+        uint256 worstPrice,
+        bool isBuy
+    );
+
+    /// @notice Emitted upon the cancellation of a limit order using the `cancelOrder` method.
+    /// @dev Cancelling an order results in one of three scenarios:
+    ///      1. Non-Claimable Order: The order is entirely unmatched. The user gets the full original order amount back, 
+    ///         setting `receiveBackAmount` equal to this amount and `claimedAmount` to zero.
+    ///      2. Fully Claimable Order: The order is completely matched. The user receives the corresponding amount in the 
+    ///         alternate asset.
+    ///      3. Partially Claimable Order: The order is partially matched. The user receives the unmatched portion in the 
+    ///         original asset and the matched portion in the alternate asset.
+    /// @param orderId The unique identifier of the order.
+    /// @param user The address of the user who placed the order.
+    /// @param pricePoint The specified price for the base token in quote token terms.
+    /// @param receiveBackAmount The amount of the original asset to be returned to the user.
+    /// @param claimedAmount The amount of the alternate asset to be returned to the user.
+    /// @param filledAmountFee The fee amount in the alternate asset to be collected.
+    /// @param isBuy A boolean flag indicating the type of order: `true` for a buy order, `false` for a sell order.
+    event LimitMakerOrderCanceled(
+        uint256 indexed orderId,
+        address indexed user,
+        uint256 pricePoint,
+        uint256 receiveBackAmount,
+        uint256 claimedAmount,
+        uint256 filledAmountFee,
+        bool isBuy
+    );
+
+    /// @notice Emitted upon the claiming of a limit order using the `claimOrder` method.
+    /// @param orderId The unique identifier of the order.
+    /// @param user The address of the user who placed the order.
+    /// @param pricePoint The specified price for the base token in quote token terms.
+    /// @param claimedAmount The amount of the alternate asset to be returned to the user.
+    /// @param fee The fee amount in the alternate asset to be collected.
+    /// @param isBuy A boolean flag indicating the type of order: `true` for a buy order, `false` for a sell order.
+    event LimitMakerOrderClaimed(
+        uint256 indexed orderId,
+        address indexed user,
+        uint256 pricePoint,
+        uint256 claimedAmount,
+        uint256 fee,
+        bool isBuy
+    );
+
+    /// @notice Emitted upon the calling updateFees method.
+    /// @param makerFee The new fee to be set for makers.
+    /// @param takerFee The new fee to be set for takers.
+    event FeePolicyUpdated(uint24 makerFee, uint24 takerFee);
+
+
+
+
     constructor(
         address baseTokenAddress_,
         address quoteTokenAddress_,
