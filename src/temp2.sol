@@ -251,6 +251,7 @@ contract Pair {
                 matchedPricePoints[i].pricePoint,
                 matchedPricePoints[i].amount,
                 isBuy,
+                false,
                 PricePointDirection.Withdraw
             );
 
@@ -271,7 +272,7 @@ contract Pair {
 
         if (remainingAmount > 0) {
             // update the price point
-            _updatePricePoint(price, remainingAmount, isBuy, PricePointDirection.Deposit);
+            _updatePricePoint(price, remainingAmount, isBuy, false, PricePointDirection.Deposit);
 
             // add the order to the orders mapping
             uint256 preOrderLiquidityPosition =
@@ -345,6 +346,7 @@ contract Pair {
                 matchedPricePoints[i].pricePoint,
                 matchedPricePoints[i].amount,
                 isBuy,
+                false,
                 PricePointDirection.Withdraw
             );
 
@@ -418,7 +420,7 @@ contract Pair {
         }
 
         // update the price point
-        _updatePricePoint(order.price, order.tokenAmount, order.isBuy, PricePointDirection.Withdraw);
+        _updatePricePoint(order.price, order.tokenAmount, order.isBuy, false, PricePointDirection.Withdraw);
 
         // update the order status
         orders[orderId].status = OrderStatus.Claimed;
@@ -428,14 +430,7 @@ contract Pair {
 
         // Emit events
 
-        emit LimitMakerOrderClaimed(
-            orderId,
-            user,
-            order.price,
-            claimableAmount,
-            fee,
-            order.isBuy
-        );
+        emit LimitMakerOrderClaimed(orderId, user, order.price, claimableAmount, fee, order.isBuy);
     }
 
     /// @notice cancelOrder - Cancels an existing order in the trading system.
@@ -461,7 +456,75 @@ contract Pair {
     ///            - Emit both claim and cancel events.
     ///            - Update the cancellation tree for the unfilled part of the order.
     ///            - Collect taker fees for the filled portion.
-    function cancelOrder(uint256 orderId) external {}
+    function cancelOrder(uint256 orderId) external {
+        Order memory order = orders[orderId];
+
+        if (order.status != OrderStatus.Open) {
+            revert InvalidOrderStatus(orderId, order.status);
+        }
+
+        uint256 receiveBackAmount = 0;
+        uint256 claimedAmount = 0;
+        uint256 filledAmountFee = 0;
+
+        (bool isFullyClaimable, uint256 claimableAmount) = _claimStatus(order);
+
+        if (isFullyClaimable) {
+            // update the price point
+            _updatePricePoint(
+                order.price, order.tokenAmount, order.isBuy, false, PricePointDirection.Withdraw
+            );
+
+            // update the order status
+            orders[orderId].status = OrderStatus.Claimed;
+
+            // transfer the tokens and take maker fees
+            filledAmountFee = _executeClaimTransfer(order.isBuy, claimableAmount);
+
+            claimedAmount = claimableAmount;
+        } else if (!isFullyClaimable && claimableAmount > 0) {
+
+            // claim the filled part of the order
+
+
+            // cancel the unfilled part of the order
+
+            // update cancellation tree
+
+
+
+        } else {
+            // update the price point
+            _updatePricePoint(
+                order.price, order.tokenAmount, order.isBuy, true, PricePointDirection.Withdraw
+            );
+
+            // update the order status
+            orders[orderId].status = OrderStatus.Canceled;
+
+            // transfer the tokens back to the user
+            receiveBackAmount = order.tokenAmount;
+            claimedAmount = 0;
+            filledAmountFee = 0;
+
+            IERC20 token = order.isBuy ? _quoteToken : _baseToken;
+            token.safeTransfer(msg.sender, receiveBackAmount);
+
+            // update the cancellation tree
+
+        }
+
+        // emit events
+        emit LimitMakerOrderCanceled(
+            orderId,
+            order.user,
+            order.price,
+            receiveBackAmount,
+            claimedAmount,
+            filledAmountFee,
+            order.isBuy
+        );
+    }
 
     /// @notice collectFees - Transfers collected fees to the governance treasury.
     /// @dev Execution Steps:
@@ -549,6 +612,7 @@ contract Pair {
         uint256 pricePoint,
         uint256 amount,
         bool isBuy,
+        bool isCancel,
         PricePointDirection direction
     ) internal {}
 
