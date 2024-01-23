@@ -789,11 +789,36 @@ contract Pair {
         internal
         view
         returns (bool isFullyClaimable, uint256 claimableAmount)
-    {}
+    {
+        uint256 cancellationTreeSum =
+            _getCancellationAmount(order.isBuy, order.price, order.orderIndexInPricePoint);
+
+        uint256 realStartPoint = order.preOrderLiquidityPosition - cancellationTreeSum;
+
+        uint256 realEndPoint = realStartPoint + order.tokenAmount;
+
+        if (order.isBuy) {
+            if (realEndPoint <= pricePoints[order.price].usedBuyLiquidity) {
+                return (true, order.tokenAmount);
+            } else if (realStartPoint >= pricePoints[order.price].usedBuyLiquidity) {
+                return (false, 0);
+            } else {
+                return (false, pricePoints[order.price].usedBuyLiquidity - realStartPoint);
+            }
+        } else {
+            if (realEndPoint <= pricePoints[order.price].usedSellLiquidity) {
+                return (true, order.tokenAmount);
+            } else if (realStartPoint >= pricePoints[order.price].usedSellLiquidity) {
+                return (false, 0);
+            } else {
+                return (false, pricePoints[order.price].usedSellLiquidity - realStartPoint);
+            }
+        }
+    }
 
     function _executeClaimTransfer(bool isBuy, uint256 amount) internal returns (uint256 fee) {}
 
-    function _getCancellationAmount(uint256 priceStep, uint256 orderIndexInPricePoint)
+    function _getCancellationAmount(bool isBuy, uint256 priceStep, uint256 orderIndexInPricePoint)
         internal
         view
         returns (uint256)
