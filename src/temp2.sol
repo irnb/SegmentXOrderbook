@@ -744,21 +744,16 @@ contract Pair {
         if (isBuy && direction == PricePointDirection.Withdraw && !isCancel) {
             pricePoints[pricePoint].totalSellLiquidity -= amount;
             pricePoints[pricePoint].usedSellLiquidity += amount;
-
         } else if (isBuy && direction == PricePointDirection.Deposit && !isCancel) {
             pricePoints[pricePoint].totalBuyLiquidity += amount;
-
         } else if (isBuy && direction == PricePointDirection.Withdraw && isCancel) {
             pricePoints[pricePoint].totalBuyLiquidity -= amount;
             pricePoints[pricePoint].usedBuyLiquidity -= amount;
-
         } else if (!isBuy && direction == PricePointDirection.Withdraw && !isCancel) {
             pricePoints[pricePoint].totalBuyLiquidity -= amount;
             pricePoints[pricePoint].usedBuyLiquidity += amount;
-
         } else if (!isBuy && direction == PricePointDirection.Deposit && !isCancel) {
             pricePoints[pricePoint].totalSellLiquidity += amount;
-
         } else if (!isBuy && direction == PricePointDirection.Withdraw && isCancel) {
             pricePoints[pricePoint].totalSellLiquidity -= amount;
             pricePoints[pricePoint].usedSellLiquidity -= amount;
@@ -774,7 +769,21 @@ contract Pair {
         }
     }
 
-    function _executeTakerOrder(bool isBuy, uint256 amount) internal returns (uint256 fee) {}
+    function _executeTakerOrder(bool isBuy, uint256 amount) internal returns (uint256 fee) {
+        uint256 feeAmount = 0;
+
+        if (isBuy) {
+            feeAmount = (amount * takerFee) / _FEE_PRECISION;
+            _quoteFeeBalance += feeAmount;
+            _quoteToken.safeTransfer(msg.sender, amount - feeAmount);
+        } else {
+            feeAmount = (amount * takerFee) / _FEE_PRECISION;
+            _baseFeeBalance += feeAmount;
+            _baseToken.safeTransfer(msg.sender, amount - feeAmount);
+        }
+
+        return feeAmount;
+    }
 
     function _claimStatus(Order memory order)
         internal
