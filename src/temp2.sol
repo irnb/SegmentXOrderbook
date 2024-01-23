@@ -50,7 +50,6 @@ contract Pair {
     /// STATE VARIABLES ///
 
     uint256 private constant _FEE_PRECISION = 1000000; // 1 = 0.0001%
-    uint256 private constant _PRICE_PRECISION = 10 ** 18;
 
     IERC20 private immutable _quoteToken;
     IERC20 private immutable _baseToken;
@@ -62,6 +61,8 @@ contract Pair {
 
     uint24 public makerFee;
     uint24 public takerFee;
+    uint256 public  pricePrecision = 10 ** 18;
+
 
     uint256 private _quoteFeeBalance;
     uint256 private _baseFeeBalance;
@@ -186,7 +187,7 @@ contract Pair {
     /// @notice Emitted upon the calling updateFees method.
     /// @param makerFee The new fee to be set for makers.
     /// @param takerFee The new fee to be set for takers.
-    event FeePolicyUpdated(uint24 makerFee, uint24 takerFee);
+    event FeePolicyUpdated(uint24 makerFee, uint24 takerFee, uint256 pricePrecision);
 
     constructor(
         address baseTokenAddress_,
@@ -555,17 +556,40 @@ contract Pair {
     ///      3. Update relevant state variables to reflect the transfer of fees.
     ///
     ///      Note: This function assumes the presence of mechanisms for fee accumulation and state variables tracking these fees.
-    function collectFees() external {}
+    function collectFees() external {
+        if (msg.sender != governanceTreasury) {
+            revert InvalidCaller(msg.sender);
+        }
+
+        // transfer the fees to the treasury
+        _quoteToken.safeTransfer(governanceTreasury, _quoteFeeBalance);
+        _baseToken.safeTransfer(governanceTreasury, _baseFeeBalance);
+
+        // update the fee balances
+        _quoteFeeBalance = 0;
+        _baseFeeBalance = 0;
+    }
 
     /// @notice updateFees - Adjusts the maker and taker fees in the trading system.
     /// @param makerFee_ The new fee to be set for makers.
     /// @param takerFee_ The new fee to be set for takers.
+    /// @param pricePrecision_ The precision of the price
     /// @dev Execution Steps:
     ///      1. Validate the caller (`msg.sender`). This action must be performed by the governance treasury. If not, revert the transaction.
     ///      2. Update the maker and taker fees with the new values provided (makerFee_ and takerFee_).
     ///
     ///      Note: This function is designed to be called by authorized personnel or systems (e.g., governance treasury) to adjust trading fees dynamically.
-    function updateFees(uint24 makerFee_, uint24 takerFee_) external {}
+    function updateFees(uint24 makerFee_, uint24 takerFee_, uint256 pricePrecision_) external {
+        if (msg.sender != governanceTreasury) {
+            revert InvalidCaller(msg.sender);
+        }
+
+        makerFee = makerFee_;
+        takerFee = takerFee_;
+        pricePrecision = pricePrecision_;
+
+        emit FeePolicyUpdated(makerFee_, takerFee_, pricePrecision_);
+    }
 
     /// VIEW FUNCTIONS ///
 
