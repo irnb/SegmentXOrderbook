@@ -579,7 +579,7 @@ contract Pair {
     ///      2. Update the maker and taker fees with the new values provided (makerFee_ and takerFee_).
     ///
     ///      Note: This function is designed to be called by authorized personnel or systems (e.g., governance treasury) to adjust trading fees dynamically.
-    function updateFees(uint24 makerFee_, uint24 takerFee_, uint256 pricePrecision_) external {
+    function updateMarketPolicy(uint24 makerFee_, uint24 takerFee_, uint256 pricePrecision_) external {
         if (msg.sender != governanceTreasury) {
             revert InvalidCaller(msg.sender);
         }
