@@ -741,6 +741,29 @@ contract Pair {
         bool isCancel,
         PricePointDirection direction
     ) internal {
+        if (isBuy && direction == PricePointDirection.Withdraw && !isCancel) {
+            pricePoints[pricePoint].totalSellLiquidity -= amount;
+            pricePoints[pricePoint].usedSellLiquidity += amount;
+
+        } else if (isBuy && direction == PricePointDirection.Deposit && !isCancel) {
+            pricePoints[pricePoint].totalBuyLiquidity += amount;
+
+        } else if (isBuy && direction == PricePointDirection.Withdraw && isCancel) {
+            pricePoints[pricePoint].totalBuyLiquidity -= amount;
+            pricePoints[pricePoint].usedBuyLiquidity -= amount;
+
+        } else if (!isBuy && direction == PricePointDirection.Withdraw && !isCancel) {
+            pricePoints[pricePoint].totalBuyLiquidity -= amount;
+            pricePoints[pricePoint].usedBuyLiquidity += amount;
+
+        } else if (!isBuy && direction == PricePointDirection.Deposit && !isCancel) {
+            pricePoints[pricePoint].totalSellLiquidity += amount;
+
+        } else if (!isBuy && direction == PricePointDirection.Withdraw && isCancel) {
+            pricePoints[pricePoint].totalSellLiquidity -= amount;
+            pricePoints[pricePoint].usedSellLiquidity -= amount;
+        }
+
         // update leading price points
         if (direction == PricePointDirection.Deposit && !isCancel) {
             if (isBuy && pricePoint > buyLeadingPricePoint) {
