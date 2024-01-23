@@ -769,7 +769,7 @@ contract Pair {
         }
     }
 
-    function _executeTakerOrder(bool isBuy, uint256 amount) internal returns (uint256 fee) {
+    function _executeTakerOrder(bool isBuy, uint256 amount) internal returns (uint256) {
         uint256 feeAmount = 0;
 
         if (isBuy) {
@@ -816,7 +816,21 @@ contract Pair {
         }
     }
 
-    function _executeClaimTransfer(bool isBuy, uint256 amount) internal returns (uint256 fee) {}
+    function _executeClaimTransfer(bool isBuy, uint256 amount) internal returns (uint256) {
+        uint256 feeAmount = 0;
+
+        if (isBuy) {
+            feeAmount = (amount * makerFee) / _FEE_PRECISION;
+            _quoteFeeBalance += feeAmount;
+            _quoteToken.safeTransfer(msg.sender, amount - feeAmount);
+        } else {
+            feeAmount = (amount * makerFee) / _FEE_PRECISION;
+            _baseFeeBalance += feeAmount;
+            _baseToken.safeTransfer(msg.sender, amount - feeAmount);
+        }
+
+        return feeAmount;
+    }
 
     function _getCancellationAmount(bool isBuy, uint256 priceStep, uint256 orderIndexInPricePoint)
         internal
@@ -847,3 +861,8 @@ contract Pair {
         returns (uint256)
     {}
 }
+
+// @TODO: the amount in the contract is based on the base token and the transfer amount 
+// should be based on the the token. make this correct in the execution of the claim and taker order
+
+// @TODO: now we have the price precision, and we should add price precision check in the needed places
