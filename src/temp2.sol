@@ -50,6 +50,7 @@ contract Pair {
     /// STATE VARIABLES ///
 
     uint256 private constant _FEE_PRECISION = 1000000; // 1 = 0.0001%
+    uint8 private constant _MAX_MATCHED_PRICE_POINTS = 5;
 
     IERC20 private immutable _quoteToken;
     IERC20 private immutable _baseToken;
@@ -61,8 +62,12 @@ contract Pair {
 
     uint24 public makerFee;
     uint24 public takerFee;
-    uint256 public  pricePrecision = 10 ** 18;
+    uint256 public pricePrecision = 10 ** 18;
 
+    /// for the `sellLeadingPricePoints`, the smaller price is the leading price
+    /// for the `buyLeadingPricePoints`, the bigger price is the leading price
+    uint256 public sellLeadingPricePoint;
+    uint256 public buyLeadingPricePoint;
 
     uint256 private _quoteFeeBalance;
     uint256 private _baseFeeBalance;
@@ -240,14 +245,14 @@ contract Pair {
         token.safeTransferFrom(msg.sender, address(this), transferAmount);
 
         // Check for a match in the order book
-        MatchedPricePoint[] memory matchedPricePoints =
+        (MatchedPricePoint[] memory matchedPricePoints, uint8 matchFoundCount) =
             _findMatchedPricePoints(isBuy, price, amount);
 
         uint256 remainingAmount = amount;
         uint256 matchedAmount = 0;
         uint256 matchedAmountForTransfer = 0;
 
-        for (uint8 i = 0; i < matchedPricePoints.length; i++) {
+        for (uint8 i = 0; i < matchFoundCount; i++) {
             // update the price point
             _updatePricePoint(
                 matchedPricePoints[i].pricePoint,
@@ -332,8 +337,12 @@ contract Pair {
     ///           - For buy orders:  (liquidityInPricePoint0 * PricePoint0 + liquidityInPricePoint1 * PricePoint1 + ... + liquidityInPricePointN * PricePointN)
     ///           - For sell orders: (liquidityInPricePoint0 + liquidityInPricePoint1 + ... + liquidityInPricePointN)
     function insertMarketOrder(bool isBuy, uint256 amount, uint256 worstPrice) external {
-        MatchedPricePoint[] memory matchedPricePoints =
+        (MatchedPricePoint[] memory matchedPricePoints, uint8 matchFoundCount) =
             _findMatchedPricePoints(isBuy, latestTradePrice, amount);
+
+        if (matchFoundCount == 0) {
+            revert NotEnoughLiquidity();
+        }
 
         uint256 remainingAmount = amount;
         uint256 matchedAmountForTransfer = 0;
@@ -579,7 +588,9 @@ contract Pair {
     ///      2. Update the maker and taker fees with the new values provided (makerFee_ and takerFee_).
     ///
     ///      Note: This function is designed to be called by authorized personnel or systems (e.g., governance treasury) to adjust trading fees dynamically.
-    function updateMarketPolicy(uint24 makerFee_, uint24 takerFee_, uint256 pricePrecision_) external {
+    function updateMarketPolicy(uint24 makerFee_, uint24 takerFee_, uint256 pricePrecision_)
+        external
+    {
         if (msg.sender != governanceTreasury) {
             revert InvalidCaller(msg.sender);
         }
@@ -645,14 +656,83 @@ contract Pair {
 
     /// INTERNAL FUNCTIONS ///
 
-    function _getDecimalComplement(address token) internal view returns (uint256) {
-        return 10 ** (18 - IERC20Metadata(token).decimals());
-    }
-
     function _findMatchedPricePoints(bool isBuy, uint256 price, uint256 amount)
         internal
-        returns (MatchedPricePoint[] memory)
-    {}
+        view
+        returns (MatchedPricePoint[] memory, uint8)
+    {
+        MatchedPricePoint[] memory responses = new MatchedPricePoint[](5);
+        uint8 matchFoundCount = 0;
+
+        uint256 remainingAmount = amount;
+        uint256 checkingPrice = price;
+
+        // check the leading price
+        if (
+            isBuy
+                && ((price >= sellLeadingPricePoint) || (pricePoints[price].totalSellLiquidity) > 0)
+        ) {
+            for (uint8 i = 0; i < _MAX_MATCHED_PRICE_POINTS; i++) {
+                uint256 matchedAmount =
+                    _findMatchedPricePointAtPrice(isBuy, checkingPrice, remainingAmount);
+
+                remainingAmount -= matchedAmount;
+
+                if (matchedAmount > 0) {
+                    responses[matchFoundCount] = MatchedPricePoint(checkingPrice, matchedAmount);
+                    matchFoundCount++;
+                }
+
+                if (remainingAmount == 0) {
+                    break;
+                }
+
+                checkingPrice -= pricePrecision;
+            }
+        } else if (
+            !isBuy
+                && ((price <= buyLeadingPricePoint) || (pricePoints[price].totalBuyLiquidity > 0))
+        ) {
+            for (uint8 i = 0; i < _MAX_MATCHED_PRICE_POINTS; i++) {
+                uint256 matchedAmount =
+                    _findMatchedPricePointAtPrice(isBuy, checkingPrice, remainingAmount);
+
+                remainingAmount -= matchedAmount;
+
+                if (matchedAmount > 0) {
+                    responses[matchFoundCount] = MatchedPricePoint(checkingPrice, matchedAmount);
+                    matchFoundCount++;
+                }
+
+                if (remainingAmount == 0) {
+                    break;
+                }
+
+                checkingPrice += pricePrecision;
+            }
+        }
+
+        return (responses, matchFoundCount);
+    }
+
+    function _findMatchedPricePointAtPrice(bool isBuy, uint256 price, uint256 amount)
+        internal
+        view
+        returns (uint256 matchedAmount)
+    {
+        uint256 totalLiquidity =
+            isBuy ? pricePoints[price].totalSellLiquidity : pricePoints[price].totalBuyLiquidity;
+
+        if (totalLiquidity == 0) {
+            return 0;
+        }
+
+        if (totalLiquidity >= amount) {
+            return amount;
+        }
+
+        return totalLiquidity;
+    }
 
     function _updatePricePoint(
         uint256 pricePoint,
@@ -660,7 +740,16 @@ contract Pair {
         bool isBuy,
         bool isCancel,
         PricePointDirection direction
-    ) internal {}
+    ) internal {
+        // update leading price points
+        if (direction == PricePointDirection.Deposit && !isCancel) {
+            if (isBuy && pricePoint > buyLeadingPricePoint) {
+                buyLeadingPricePoint = pricePoint;
+            } else if (!isBuy && pricePoint < sellLeadingPricePoint) {
+                sellLeadingPricePoint = pricePoint;
+            }
+        }
+    }
 
     function _executeTakerOrder(bool isBuy, uint256 amount) internal returns (uint256 fee) {}
 
@@ -684,6 +773,10 @@ contract Pair {
         uint256 amount,
         bool isBuy
     ) internal {}
+
+    function _getDecimalComplement(address token) internal view returns (uint256) {
+        return 10 ** (18 - IERC20Metadata(token).decimals());
+    }
 
     function _scaleDown(uint256 amount, uint256 price, uint256 precisionComplement)
         internal
