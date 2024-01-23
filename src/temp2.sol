@@ -94,6 +94,7 @@ contract Pair {
     error NotEnoughLiquidity();
     error InvalidOrderStatus(uint256 orderId, OrderStatus status);
     error IsNotFullyClaimable();
+    error InvalidCaller(address caller);
 
     /// EVENTS ///
 
@@ -420,7 +421,9 @@ contract Pair {
         }
 
         // update the price point
-        _updatePricePoint(order.price, order.tokenAmount, order.isBuy, false, PricePointDirection.Withdraw);
+        _updatePricePoint(
+            order.price, order.tokenAmount, order.isBuy, false, PricePointDirection.Withdraw
+        );
 
         // update the order status
         orders[orderId].status = OrderStatus.Claimed;
@@ -483,16 +486,34 @@ contract Pair {
 
             claimedAmount = claimableAmount;
         } else if (!isFullyClaimable && claimableAmount > 0) {
-
             // claim the filled part of the order
+            filledAmountFee = _executeClaimTransfer(order.isBuy, claimableAmount);
+            claimedAmount = claimableAmount;
 
+            // update the price point
+            _updatePricePoint(
+                order.price, order.tokenAmount, order.isBuy, false, PricePointDirection.Withdraw
+            );
 
             // cancel the unfilled part of the order
 
-            // update cancellation tree
+            receiveBackAmount = order.tokenAmount - claimableAmount;
 
+            _updatePricePoint(
+                order.price, receiveBackAmount, order.isBuy, true, PricePointDirection.Withdraw
+            );
 
+            _updateCancellationTree(
+                order.price, order.orderIndexInPricePoint, receiveBackAmount, order.isBuy
+            );
 
+            // update the order status
+            orders[orderId].status = OrderStatus.Canceled;
+
+            // transfer the tokens back to the user
+
+            IERC20 token = order.isBuy ? _quoteToken : _baseToken;
+            token.safeTransfer(msg.sender, receiveBackAmount);
         } else {
             // update the price point
             _updatePricePoint(
@@ -506,12 +527,13 @@ contract Pair {
             receiveBackAmount = order.tokenAmount;
             claimedAmount = 0;
             filledAmountFee = 0;
+            // update the cancellation tree
+            _updateCancellationTree(
+                order.price, order.orderIndexInPricePoint, order.tokenAmount, order.isBuy
+            );
 
             IERC20 token = order.isBuy ? _quoteToken : _baseToken;
             token.safeTransfer(msg.sender, receiveBackAmount);
-
-            // update the cancellation tree
-
         }
 
         // emit events
@@ -625,6 +647,19 @@ contract Pair {
     {}
 
     function _executeClaimTransfer(bool isBuy, uint256 amount) internal returns (uint256 fee) {}
+
+    function _getCancellationAmount(uint256 priceStep, uint256 orderIndexInPricePoint)
+        internal
+        view
+        returns (uint256)
+    {}
+
+    function _updateCancellationTree(
+        uint256 priceStep,
+        uint256 orderIndexInPricePoint,
+        uint256 amount,
+        bool isBuy
+    ) internal {}
 
     function _scaleDown(uint256 amount, uint256 price, uint256 precisionComplement)
         internal
