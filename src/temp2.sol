@@ -874,9 +874,7 @@ contract Pair {
         }
 
         cancellationAmount = _scaleUp(
-            rawCancellationAmount,
-            priceStep,
-            isBuy ? _quotePrecisionComplement : _basePrecisionComplement
+            rawCancellationAmount
         );
         return cancellationAmount;
     }
@@ -890,7 +888,7 @@ contract Pair {
         (uint16 offset, uint256 orderId) = _calCulateOffset(orderIndexInPricePoint);
 
         uint64 rawAmount = _scaleDown(
-            amount, priceStep, isBuy ? _quotePrecisionComplement : _basePrecisionComplement
+            amount
         );
 
         if (isBuy) {
@@ -917,17 +915,27 @@ contract Pair {
         return 10 ** (18 - IERC20Metadata(token).decimals());
     }
 
-    function _scaleDown(uint256 amount, uint256 price, uint256 precisionComplement)
+    function _scaleDown(uint256 amount)
         internal
         pure
         returns (uint64)
-    {}
+    {
+        // check the amount is not too large
+        require(amount <= type(uint64).max, "amount too large");
 
-    function _scaleUp(uint256 amount, uint256 price, uint256 precisionComplement)
+        // cast to uint64
+        return uint64(amount);
+
+    }
+
+    function _scaleUp(uint64 amount)
         internal
         pure
         returns (uint256)
-    {}
+    {
+        // cast to uint256
+        return uint256(amount);
+    }
 
 
 }
