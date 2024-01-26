@@ -936,8 +936,7 @@ contract Pair {
         // cast to uint256
         return uint256(amount);
     }
-
-
+    
 }
 
 // @TODO: the amount in the contract is based on the base token and the transfer amount
