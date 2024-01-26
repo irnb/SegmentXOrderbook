@@ -39,7 +39,8 @@ contract Pair {
         uint256 totalSellLiquidity;
         uint256 usedBuyLiquidity;
         uint256 usedSellLiquidity;
-        uint256 orderCount;
+        uint256 buyOrderCount;
+        uint256 sellOrderCount;
     }
 
     struct MatchedPricePoint {
@@ -73,6 +74,7 @@ contract Pair {
     uint256 private _baseFeeBalance;
 
     uint256 public orderCount;
+
     uint256 public latestTradePrice;
 
     mapping(uint256 => Order) public orders;
@@ -281,11 +283,13 @@ contract Pair {
             // update the price point
             _updatePricePoint(price, remainingAmount, isBuy, false, PricePointDirection.Deposit);
 
+            uint256 orderCountInPricePoint =
+                isBuy ? pricePoints[price].buyOrderCount : pricePoints[price].sellOrderCount;
             // add the order to the orders mapping
             uint256 preOrderLiquidityPosition =
                 isBuy ? pricePoints[price].usedBuyLiquidity : pricePoints[price].usedSellLiquidity;
             orders[orderCount] = Order(
-                pricePoints[price].orderCount,
+                orderCountInPricePoint,
                 preOrderLiquidityPosition,
                 remainingAmount,
                 price,
@@ -295,7 +299,11 @@ contract Pair {
             );
 
             // update the pricePoint order count
-            pricePoints[price].orderCount++;
+            if (isBuy) {
+                pricePoints[price].buyOrderCount++;
+            } else {
+                pricePoints[price].sellOrderCount++;
+            }
         }
 
         if (matchedAmount > 0) {
@@ -791,7 +799,7 @@ contract Pair {
         returns (bool isFullyClaimable, uint256 claimableAmount)
     {
         uint256 cancellationTreeSum =
-            _getCancellationAmount(order.isBuy, order.price, order.orderIndexInPricePoint);
+            _getCancellationAmountInRange(order.isBuy, order.price, order.orderIndexInPricePoint);
 
         uint256 realStartPoint = order.preOrderLiquidityPosition - cancellationTreeSum;
 
@@ -832,11 +840,45 @@ contract Pair {
         return feeAmount;
     }
 
-    function _getCancellationAmount(bool isBuy, uint256 priceStep, uint256 orderIndexInPricePoint)
-        internal
-        view
-        returns (uint256)
-    {}
+    function _getCancellationAmountInRange(
+        bool isBuy,
+        uint256 priceStep,
+        uint256 orderIndexInPricePoint
+    ) internal view returns (uint256) {
+        ( uint16 offset, uint256 orderId ) = _calCulateOffset(orderIndexInPricePoint);
+        uint64 rawCancellationAmount = 0;
+        uint256 cancellationAmount = 0;
+
+        if (offset == 0) {
+            rawCancellationAmount = isBuy
+                ? _pricePointBuyCancellationTrees[priceStep][offset].query(0, orderId)
+                : _pricePointSellCancellationTrees[priceStep][offset].query(0, orderId);
+        } else if (offset <= 5) {
+            rawCancellationAmount = isBuy
+                ? _pricePointBuyCancellationTrees[priceStep][offset].query(0, orderId)
+                : _pricePointSellCancellationTrees[priceStep][offset].query(0, orderId);
+            for (uint16 i = 0; i < offset; i++) {
+                rawCancellationAmount += isBuy
+                    ? _pricePointBuyCancellationTrees[priceStep][i].total()
+                    : _pricePointSellCancellationTrees[priceStep][i].total();
+            }
+        } else {
+            rawCancellationAmount = isBuy
+                ? _pricePointBuyCancellationTrees[priceStep][offset].query(0, orderId)
+                : _pricePointSellCancellationTrees[priceStep][offset].query(0, orderId);
+
+            rawCancellationAmount += isBuy
+                ? _offsetAggregatedBuyCancellationTrees[priceStep].query(0, offset - 1)
+                : _offsetAggregatedSellCancellationTrees[priceStep].query(0, offset - 1);
+        }
+
+        cancellationAmount = _scaleUp(
+            rawCancellationAmount,
+            priceStep,
+            isBuy ? _quotePrecisionComplement : _basePrecisionComplement
+        );
+        return cancellationAmount;
+    }
 
     function _updateCancellationTree(
         uint256 priceStep,
@@ -860,9 +902,18 @@ contract Pair {
         pure
         returns (uint256)
     {}
+
+    function _calCulateOffset(uint256 orderIndexInPricePoint)
+        internal
+        view
+        returns (uint16 offset, uint16 orderID)
+    {}
 }
 
-// @TODO: the amount in the contract is based on the base token and the transfer amount 
-// should be based on the the token. make this correct in the execution of the claim and taker order
+// @TODO: the amount in the contract is based on the base token and the transfer amount
+//        should be based on the the token. make this correct in the execution of the claim and taker order
 
 // @TODO: now we have the price precision, and we should add price precision check in the needed places
+
+// @TODO: scale up and scale down should be based on the price precision and apply their limits and logic
+//        in the needed places
