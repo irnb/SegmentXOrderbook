@@ -52,6 +52,7 @@ contract Pair {
 
     uint256 private constant _FEE_PRECISION = 1000000; // 1 = 0.0001%
     uint8 private constant _MAX_MATCHED_PRICE_POINTS = 5;
+    uint16 private constant _OFFSET_PER_PRICE_POINT = 32768; // 2^15
 
     IERC20 private immutable _quoteToken;
     IERC20 private immutable _baseToken;
@@ -845,7 +846,7 @@ contract Pair {
         uint256 priceStep,
         uint256 orderIndexInPricePoint
     ) internal view returns (uint256) {
-        ( uint16 offset, uint256 orderId ) = _calCulateOffset(orderIndexInPricePoint);
+        (uint16 offset, uint256 orderId) = _calCulateOffset(orderIndexInPricePoint);
         uint64 rawCancellationAmount = 0;
         uint256 cancellationAmount = 0;
 
@@ -885,7 +886,32 @@ contract Pair {
         uint256 orderIndexInPricePoint,
         uint256 amount,
         bool isBuy
-    ) internal {}
+    ) internal {
+        (uint16 offset, uint256 orderId) = _calCulateOffset(orderIndexInPricePoint);
+
+        uint64 rawAmount = _scaleDown(
+            amount, priceStep, isBuy ? _quotePrecisionComplement : _basePrecisionComplement
+        );
+
+        if (isBuy) {
+            _pricePointBuyCancellationTrees[priceStep][offset].update(orderId, rawAmount);
+            uint64 total = _pricePointBuyCancellationTrees[priceStep][offset].total();
+            _offsetAggregatedBuyCancellationTrees[priceStep].update(offset, total);
+        } else {
+            _pricePointSellCancellationTrees[priceStep][offset].update(orderId, rawAmount);
+            uint64 total = _pricePointSellCancellationTrees[priceStep][offset].total();
+            _offsetAggregatedSellCancellationTrees[priceStep].update(offset, total);
+        }
+    }
+
+    function _calCulateOffset(uint256 orderIndexInPricePoint)
+        internal
+        pure
+        returns (uint16 offset, uint16 orderID)
+    {
+        offset = uint16(orderIndexInPricePoint / _OFFSET_PER_PRICE_POINT);
+        orderID = uint16(orderIndexInPricePoint % _OFFSET_PER_PRICE_POINT);
+    }
 
     function _getDecimalComplement(address token) internal view returns (uint256) {
         return 10 ** (18 - IERC20Metadata(token).decimals());
@@ -903,11 +929,7 @@ contract Pair {
         returns (uint256)
     {}
 
-    function _calCulateOffset(uint256 orderIndexInPricePoint)
-        internal
-        view
-        returns (uint16 offset, uint16 orderID)
-    {}
+
 }
 
 // @TODO: the amount in the contract is based on the base token and the transfer amount
