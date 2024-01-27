@@ -873,9 +873,7 @@ contract Pair {
                 : _offsetAggregatedSellCancellationTrees[priceStep].query(0, offset - 1);
         }
 
-        cancellationAmount = _scaleUp(
-            rawCancellationAmount
-        );
+        cancellationAmount = _scaleUp(rawCancellationAmount);
         return cancellationAmount;
     }
 
@@ -887,9 +885,7 @@ contract Pair {
     ) internal {
         (uint16 offset, uint256 orderId) = _calCulateOffset(orderIndexInPricePoint);
 
-        uint64 rawAmount = _scaleDown(
-            amount
-        );
+        uint64 rawAmount = _scaleDown(amount);
 
         if (isBuy) {
             _pricePointBuyCancellationTrees[priceStep][offset].update(orderId, rawAmount);
@@ -915,28 +911,18 @@ contract Pair {
         return 10 ** (18 - IERC20Metadata(token).decimals());
     }
 
-    function _scaleDown(uint256 amount)
-        internal
-        pure
-        returns (uint64)
-    {
+    function _scaleDown(uint256 amount) internal pure returns (uint64) {
         // check the amount is not too large
         require(amount <= type(uint64).max, "amount too large");
 
         // cast to uint64
         return uint64(amount);
-
     }
 
-    function _scaleUp(uint64 amount)
-        internal
-        pure
-        returns (uint256)
-    {
+    function _scaleUp(uint64 amount) internal pure returns (uint256) {
         // cast to uint256
         return uint256(amount);
     }
-    
 }
 
 // @TODO: the amount in the contract is based on the base token and the transfer amount
@@ -946,3 +932,5 @@ contract Pair {
 
 // @TODO: scale up and scale down should be based on the price precision and apply their limits and logic
 //        in the needed places
+
+// @TODO: update the nat spec ot get accurate with implementation
