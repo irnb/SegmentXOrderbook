@@ -2,9 +2,10 @@
 
 pragma solidity 0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "../lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./lib/mvp/SegmentedSegmentTree.sol";
+import "./lib/mvp/Math.sol";
 
 contract Pair {
     using SafeERC20 for IERC20;
@@ -51,6 +52,7 @@ contract Pair {
     /// STATE VARIABLES ///
 
     uint256 private constant _FEE_PRECISION = 1000000; // 1 = 0.0001%
+    uint256 private constant _PRICE_PRECISION = 10 ** 18;
     uint8 private constant _MAX_MATCHED_PRICE_POINTS = 5;
     uint16 private constant _OFFSET_PER_PRICE_POINT = 32768; // 2^15
 
@@ -60,11 +62,9 @@ contract Pair {
     uint256 private immutable _quotePrecisionComplement; // 10**(18 - d)
     uint256 private immutable _basePrecisionComplement; // 10**(18 - d)
 
-    uint256 public immutable quoteUnit;
-
     uint24 public makerFee;
     uint24 public takerFee;
-    uint256 public pricePrecision = 10 ** 18;
+    uint256 public priceStep;
 
     /// for the `sellLeadingPricePoints`, the smaller price is the leading price
     /// for the `buyLeadingPricePoints`, the bigger price is the leading price
@@ -195,12 +195,13 @@ contract Pair {
     /// @notice Emitted upon the calling updateFees method.
     /// @param makerFee The new fee to be set for makers.
     /// @param takerFee The new fee to be set for takers.
-    event FeePolicyUpdated(uint24 makerFee, uint24 takerFee, uint256 pricePrecision);
+    /// @param priceStep The new price step to be set.
+    event FeePolicyUpdated(uint24 makerFee, uint24 takerFee, uint256 priceStep);
 
     constructor(
         address baseTokenAddress_,
         address quoteTokenAddress_,
-        uint256 quoteUnit_,
+        uint256 priceStep_,
         uint24 makerFee_,
         uint24 takerFee_,
         address governanceTreasury_
@@ -211,8 +212,7 @@ contract Pair {
         _quotePrecisionComplement = _getDecimalComplement(quoteTokenAddress_);
         _basePrecisionComplement = _getDecimalComplement(baseTokenAddress_);
 
-        quoteUnit = quoteUnit_;
-
+        priceStep = priceStep_;
         makerFee = makerFee_;
         takerFee = takerFee_;
 
@@ -241,8 +241,16 @@ contract Pair {
     /// @dev Note: It's important to monitor the maximum amount and price to maintain integrity, especially when an order is canceled.
     /// @dev Note: if we had limit taker order, we update the latest trade price
     function insertLimitOrder(bool isBuy, uint256 price, uint256 amount) external {
-        IERC20 token = isBuy ? _quoteToken : _baseToken;
-        uint256 transferAmount = isBuy ? price * amount : amount;
+        IERC20 token;
+        uint256 transferAmount;
+        if (isBuy) {
+            token = _quoteToken;
+            transferAmount = price * amount * _basePrecisionComplement;
+            transferAmount = Math.divide(transferAmount, _PRICE_PRECISION, true);
+        } else {
+            token = _baseToken;
+            transferAmount = amount;
+        }
 
         // Transfer tokens from the user to the contract
         token.safeTransferFrom(msg.sender, address(this), transferAmount);
@@ -591,24 +599,22 @@ contract Pair {
     /// @notice updateFees - Adjusts the maker and taker fees in the trading system.
     /// @param makerFee_ The new fee to be set for makers.
     /// @param takerFee_ The new fee to be set for takers.
-    /// @param pricePrecision_ The precision of the price
+    /// @param priceStep_ The new price step to be set.
     /// @dev Execution Steps:
     ///      1. Validate the caller (`msg.sender`). This action must be performed by the governance treasury. If not, revert the transaction.
     ///      2. Update the maker and taker fees with the new values provided (makerFee_ and takerFee_).
     ///
     ///      Note: This function is designed to be called by authorized personnel or systems (e.g., governance treasury) to adjust trading fees dynamically.
-    function updateMarketPolicy(uint24 makerFee_, uint24 takerFee_, uint256 pricePrecision_)
-        external
-    {
+    function updateMarketPolicy(uint24 makerFee_, uint24 takerFee_, uint256 priceStep_) external {
         if (msg.sender != governanceTreasury) {
             revert InvalidCaller(msg.sender);
         }
 
         makerFee = makerFee_;
         takerFee = takerFee_;
-        pricePrecision = pricePrecision_;
+        priceStep = priceStep_;
 
-        emit FeePolicyUpdated(makerFee_, takerFee_, pricePrecision_);
+        emit FeePolicyUpdated(makerFee_, takerFee_, priceStep_);
     }
 
     /// VIEW FUNCTIONS ///
@@ -679,7 +685,12 @@ contract Pair {
         // check the leading price
         if (
             isBuy
-                && ((price >= sellLeadingPricePoint) || (pricePoints[price].totalSellLiquidity) > 0)
+                && (
+                    (
+                        (price >= sellLeadingPricePoint)
+                            && (pricePoints[sellLeadingPricePoint].totalSellLiquidity > 0)
+                    ) || (pricePoints[price].totalSellLiquidity) > 0
+                )
         ) {
             for (uint8 i = 0; i < _MAX_MATCHED_PRICE_POINTS; i++) {
                 uint256 matchedAmount =
@@ -696,11 +707,16 @@ contract Pair {
                     break;
                 }
 
-                checkingPrice -= pricePrecision;
+                checkingPrice -= priceStep;
             }
         } else if (
             !isBuy
-                && ((price <= buyLeadingPricePoint) || (pricePoints[price].totalBuyLiquidity > 0))
+                && (
+                    (
+                        (price <= buyLeadingPricePoint)
+                            && (pricePoints[buyLeadingPricePoint].totalBuyLiquidity > 0)
+                    ) || (pricePoints[price].totalBuyLiquidity > 0)
+                )
         ) {
             for (uint8 i = 0; i < _MAX_MATCHED_PRICE_POINTS; i++) {
                 uint256 matchedAmount =
@@ -717,7 +733,7 @@ contract Pair {
                     break;
                 }
 
-                checkingPrice += pricePrecision;
+                checkingPrice += priceStep;
             }
         }
 
@@ -843,7 +859,7 @@ contract Pair {
 
     function _getCancellationAmountInRange(
         bool isBuy,
-        uint256 priceStep,
+        uint256 pricePoint,
         uint256 orderIndexInPricePoint
     ) internal view returns (uint256) {
         (uint16 offset, uint256 orderId) = _calCulateOffset(orderIndexInPricePoint);
@@ -852,25 +868,25 @@ contract Pair {
 
         if (offset == 0) {
             rawCancellationAmount = isBuy
-                ? _pricePointBuyCancellationTrees[priceStep][offset].query(0, orderId)
-                : _pricePointSellCancellationTrees[priceStep][offset].query(0, orderId);
+                ? _pricePointBuyCancellationTrees[pricePoint][offset].query(0, orderId)
+                : _pricePointSellCancellationTrees[pricePoint][offset].query(0, orderId);
         } else if (offset <= 5) {
             rawCancellationAmount = isBuy
-                ? _pricePointBuyCancellationTrees[priceStep][offset].query(0, orderId)
-                : _pricePointSellCancellationTrees[priceStep][offset].query(0, orderId);
+                ? _pricePointBuyCancellationTrees[pricePoint][offset].query(0, orderId)
+                : _pricePointSellCancellationTrees[pricePoint][offset].query(0, orderId);
             for (uint16 i = 0; i < offset; i++) {
                 rawCancellationAmount += isBuy
-                    ? _pricePointBuyCancellationTrees[priceStep][i].total()
-                    : _pricePointSellCancellationTrees[priceStep][i].total();
+                    ? _pricePointBuyCancellationTrees[pricePoint][i].total()
+                    : _pricePointSellCancellationTrees[pricePoint][i].total();
             }
         } else {
             rawCancellationAmount = isBuy
-                ? _pricePointBuyCancellationTrees[priceStep][offset].query(0, orderId)
-                : _pricePointSellCancellationTrees[priceStep][offset].query(0, orderId);
+                ? _pricePointBuyCancellationTrees[pricePoint][offset].query(0, orderId)
+                : _pricePointSellCancellationTrees[pricePoint][offset].query(0, orderId);
 
             rawCancellationAmount += isBuy
-                ? _offsetAggregatedBuyCancellationTrees[priceStep].query(0, offset - 1)
-                : _offsetAggregatedSellCancellationTrees[priceStep].query(0, offset - 1);
+                ? _offsetAggregatedBuyCancellationTrees[pricePoint].query(0, offset - 1)
+                : _offsetAggregatedSellCancellationTrees[pricePoint].query(0, offset - 1);
         }
 
         cancellationAmount = _scaleUp(rawCancellationAmount);
@@ -878,7 +894,7 @@ contract Pair {
     }
 
     function _updateCancellationTree(
-        uint256 priceStep,
+        uint256 pricePoint,
         uint256 orderIndexInPricePoint,
         uint256 amount,
         bool isBuy
@@ -888,13 +904,13 @@ contract Pair {
         uint64 rawAmount = _scaleDown(amount);
 
         if (isBuy) {
-            _pricePointBuyCancellationTrees[priceStep][offset].update(orderId, rawAmount);
-            uint64 total = _pricePointBuyCancellationTrees[priceStep][offset].total();
-            _offsetAggregatedBuyCancellationTrees[priceStep].update(offset, total);
+            _pricePointBuyCancellationTrees[pricePoint][offset].update(orderId, rawAmount);
+            uint64 total = _pricePointBuyCancellationTrees[pricePoint][offset].total();
+            _offsetAggregatedBuyCancellationTrees[pricePoint].update(offset, total);
         } else {
-            _pricePointSellCancellationTrees[priceStep][offset].update(orderId, rawAmount);
-            uint64 total = _pricePointSellCancellationTrees[priceStep][offset].total();
-            _offsetAggregatedSellCancellationTrees[priceStep].update(offset, total);
+            _pricePointSellCancellationTrees[pricePoint][offset].update(orderId, rawAmount);
+            uint64 total = _pricePointSellCancellationTrees[pricePoint][offset].total();
+            _offsetAggregatedSellCancellationTrees[pricePoint].update(offset, total);
         }
     }
 
