@@ -81,18 +81,18 @@ contract Pair {
     mapping(uint256 => Order) public orders;
     mapping(uint256 => PricePoint) public pricePoints;
 
-    /// @dev `pricePointOrderCounts` priceStep => offset => cancellationTree
+    /// @dev `pricePointOrderCounts` pricePoint => offset => cancellationTree
     mapping(uint256 => mapping(uint16 => SegmentedSegmentTree.Core)) private
         _pricePointBuyCancellationTrees;
 
-    /// @dev `pricePointOrderCounts` priceStep => offset => cancellationTree
+    /// @dev `pricePointOrderCounts` pricePoint => offset => cancellationTree
     mapping(uint256 => mapping(uint16 => SegmentedSegmentTree.Core)) private
         _pricePointSellCancellationTrees;
 
-    /// @dev `offsetAggregatedCancellationTrees`  Aggregate cancellation tree => priceStep => cancellationTree
+    /// @dev `offsetAggregatedCancellationTrees`  Aggregate cancellation tree => pricePoint => cancellationTree
     mapping(uint256 => SegmentedSegmentTree.Core) private _offsetAggregatedBuyCancellationTrees;
 
-    /// @dev `offsetAggregatedCancellationTrees`  Aggregate cancellation tree => priceStep => cancellationTree
+    /// @dev `offsetAggregatedCancellationTrees`  Aggregate cancellation tree => pricePoint => cancellationTree
     mapping(uint256 => SegmentedSegmentTree.Core) private _offsetAggregatedSellCancellationTrees;
 
     address public governanceTreasury;
@@ -104,6 +104,7 @@ contract Pair {
     error InvalidOrderStatus(uint256 orderId, OrderStatus status);
     error IsNotFullyClaimable();
     error InvalidCaller(address caller);
+    error InvalidPriceStep(uint256 price, uint256 priceStep);
 
     /// EVENTS ///
 
@@ -195,8 +196,8 @@ contract Pair {
     /// @notice Emitted upon the calling updateFees method.
     /// @param makerFee The new fee to be set for makers.
     /// @param takerFee The new fee to be set for takers.
-    /// @param priceStep The new price step to be set.
-    event FeePolicyUpdated(uint24 makerFee, uint24 takerFee, uint256 priceStep);
+    /// @param newPriceStep The new price step to be set.
+    event FeePolicyUpdated(uint24 makerFee, uint24 takerFee, uint256 newPriceStep);
 
     constructor(
         address baseTokenAddress_,
@@ -241,6 +242,10 @@ contract Pair {
     /// @dev Note: It's important to monitor the maximum amount and price to maintain integrity, especially when an order is canceled.
     /// @dev Note: if we had limit taker order, we update the latest trade price
     function insertLimitOrder(bool isBuy, uint256 price, uint256 amount) external {
+        // check the validity of the price
+        if (price % priceStep != 0) {
+            revert InvalidPriceStep(price, priceStep);
+        }
         IERC20 token;
         uint256 transferAmount;
         if (isBuy) {

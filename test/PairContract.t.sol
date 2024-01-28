@@ -27,7 +27,7 @@ contract PairTest is Test {
         uint24 makerFee_ = 10;
         uint24 takerFee_ = 20;
 
-        uint256 priceStep = 2 * 10 ** 6; // 2 USDT
+        uint256 priceStep = 5 * 10 ** 5; // 0.5 USDT => 0.5 * 10 ** 6 == 5 * 10 ** 5 
 
         pair = new Pair(
             address(baseToken),
@@ -107,6 +107,39 @@ contract PairTest is Test {
         ///      - the pricePoint should update correctly.
         ///      - the orderID should get incremented correctly.
 
+        /// Pre-requisite
+        vm.startPrank(TOKEN_HOLDER);
+        baseToken.safeTransfer(USER_1, 5 * 10 ** 18);
+        quoteToken.safeTransfer(USER_2, 10000 * 10 ** 6);
+
+        vm.stopPrank();
+
+        /// @NOTE Insert a limit order in sell side.
+        vm.startPrank(USER_1);
+
+        bool isBuy = false;
+        uint256 price = 2000 * 10 ** 6; // 2000 USDT
+        uint256 amount = 1 * 10 ** 18;
+
+        baseToken.safeIncreaseAllowance(address(pair), amount);
+
+        pair.insertLimitOrder(isBuy, price, amount);
+
+        uint256 newPrice = 2005 * 10 ** 6; // 2010 USDT
+        pair.insertMarketOrder(isBuy, newPrice, amount);
+
+        vm.stopPrank();
+
+        /// @NOTE Insert a market maker order in buy side.
+        vm.startPrank(USER_2);
+
+        uint256 worstPrice = 2100 * 10 ** 6; // 2000 USDT
+        uint256 marketOrder = 2 ether;
+        bool marketOrderIsBuy = true;
+
+        pair.insertMarketOrder(marketOrderIsBuy, marketOrder, worstPrice);
+
+        vm.stopPrank();
         /// @NOTE Scenario 2 => Insert a market maker order in sell side.
         /// Pre-requisite:
         ///      - Insert a limit order in buy side.
