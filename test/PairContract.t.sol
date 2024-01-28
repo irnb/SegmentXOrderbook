@@ -2,27 +2,34 @@
 
 pragma solidity 0.8.20;
 
-import {Test, console2} from "lib/forge-std/src/Test.sol";
+import {Test, console2} from "../lib/forge-std/src/Test.sol";
 import {Pair} from "../src/PairContract.sol";
 import {FakeToken} from "./util/fakeToken.sol";
-import "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract PairTest is Test {
     using SafeERC20 for IERC20;
 
+    Pair pair;
+    IERC20 baseToken;
+    IERC20 quoteToken;
+
     address constant TOKEN_HOLDER = address(0x123);
     address constant GOVERNANCE_TREASURY = address(0x456);
 
+    address constant USER_1 = address(0x789);
+    address constant USER_2 = address(0xabc);
+
     function setUp() public {
-        IERC20 baseToken = new FakeToken("BASE", "BT", TOKEN_HOLDER);
-        IERC20 quoteToken = new FakeToken("QUOTE", "QT", TOKEN_HOLDER);
+        baseToken = new FakeToken("BASE", "BT", TOKEN_HOLDER);
+        quoteToken = new FakeToken("QUOTE", "QT", TOKEN_HOLDER);
 
         uint24 makerFee_ = 10;
         uint24 takerFee_ = 20;
 
         uint256 quoteUnit_ = 1;
 
-        Pair pair = new Pair(
+        pair = new Pair(
             address(baseToken),
             address(quoteToken),
             quoteUnit_,
@@ -30,11 +37,9 @@ contract PairTest is Test {
             takerFee_,
             GOVERNANCE_TREASURY
         );
+
     }
 
-    function test_Constructor() public {
-        // TODO
-    }
     function test_InsertLimitOrder() public {
         /// @NOTE Scenario 1 => Insert a limit maker order in buy side.
         /// Acceptance Criteria:
@@ -45,6 +50,26 @@ contract PairTest is Test {
         ///      - check orderID 0 struct to check all the values are correct.
         ///      - check the event is emitted correctly.
         ///      - in the last step we should check the orderID is incremented correctly.
+
+        /// TOKEN TRANSFER
+        uint256 value = 100_000_000_000_000; // 100 million USDT
+        vm.startPrank(TOKEN_HOLDER);
+        quoteToken.safeTransfer(USER_1, value);
+        vm.stopPrank();
+
+        /// TOKEN APPROVE AND INSERT LIMIT ORDER
+        vm.startPrank(USER_1);
+
+        bool isBuy = true;
+        uint256 price = 2000_000_000; // 2000 USDT
+        uint256 amount = 1 ether;
+
+        quoteToken.safeIncreaseAllowance(address(pair), price * amount);
+
+
+        pair.insertLimitOrder(isBuy, price, amount);
+
+        vm.stopPrank();
 
         /// @NOTE Scenario 2 => Insert another limit maker order in buy side.
         /// Acceptance Criteria:
