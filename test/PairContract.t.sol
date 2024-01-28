@@ -21,23 +21,22 @@ contract PairTest is Test {
     address constant USER_2 = address(0xabc);
 
     function setUp() public {
-        baseToken = new FakeToken("BASE", "BT", TOKEN_HOLDER);
-        quoteToken = new FakeToken("QUOTE", "QT", TOKEN_HOLDER);
+        baseToken = new FakeToken("BASE", "BT", TOKEN_HOLDER, 18, 1000 * 10 ** 18);
+        quoteToken = new FakeToken("QUOTE", "QT", TOKEN_HOLDER, 6, 30_000_000 * 10 ** 6);
 
         uint24 makerFee_ = 10;
         uint24 takerFee_ = 20;
 
-        uint256 quoteUnit_ = 1;
+        uint256 priceStep = 2 * 10 ** 6; // 2 USDT
 
         pair = new Pair(
             address(baseToken),
             address(quoteToken),
-            quoteUnit_,
+            priceStep,
             makerFee_,
             takerFee_,
             GOVERNANCE_TREASURY
         );
-
     }
 
     function test_InsertLimitOrder() public {
@@ -52,20 +51,18 @@ contract PairTest is Test {
         ///      - in the last step we should check the orderID is incremented correctly.
 
         /// TOKEN TRANSFER
-        uint256 value = 100_000_000_000_000; // 100 million USDT
         vm.startPrank(TOKEN_HOLDER);
-        quoteToken.safeTransfer(USER_1, value);
+        quoteToken.safeTransfer(USER_1, 10_000_000 * 10 ** 6);
         vm.stopPrank();
 
         /// TOKEN APPROVE AND INSERT LIMIT ORDER
         vm.startPrank(USER_1);
 
         bool isBuy = true;
-        uint256 price = 2000_000_000; // 2000 USDT
+        uint256 price = 2000 * 10 ** 6; // 2000 USDT
         uint256 amount = 1 ether;
 
         quoteToken.safeIncreaseAllowance(address(pair), price * amount);
-
 
         pair.insertLimitOrder(isBuy, price, amount);
 
@@ -96,7 +93,6 @@ contract PairTest is Test {
         ///      - user should receive the correct amount of quoteToken for getting matched
         ///      - the pricePoint should update correctly in both sides.
         ///      - latestPricePoint should update correctly.
-
     }
 
     function test_MarketOrder() public {
@@ -115,14 +111,12 @@ contract PairTest is Test {
         /// Pre-requisite:
         ///      - Insert a limit order in buy side.
         /// Acceptance Criteria:
-        ///      - Token transferred to the contract with the correct amount.   
+        ///      - Token transferred to the contract with the correct amount.
         ///      - the quoteToken should get transferred to the user address.
         ///      - fee should calculate correctly based on the TakerFee.
         ///      - the latestPricePoint should update correctly.
         ///      - the pricePoint should update correctly.
         ///      - the orderID should get incremented correctly.
-
-
     }
 
     function test_CancelOrder() public {
@@ -143,7 +137,7 @@ contract PairTest is Test {
         ///      - Insert market order in buy to fill the limit order partially.
         /// Acceptance Criteria:
         ///      - the scenario 1 checks should get passed.
-        ///      - the claim should happen for the filled amount. 
+        ///      - the claim should happen for the filled amount.
         ///      - the base token should get transferred to the user address for claim.
         ///      - the maker fee should get reduced from the claim amount.
 
@@ -156,14 +150,12 @@ contract PairTest is Test {
         ///      - the claim should happen for the filled amount.
         ///      - the quote token should get transferred to the user address for claim.
         ///      - the maker fee should get reduced from the claim amount.
-
-
     }
 
     function test_ClaimOrder() public {
         // @NOTE Scenario 1 => Claim a fully filled limit order in buy side.
         /// Pre-requisite:
-        ///      - Insert a limit order in buy side.    
+        ///      - Insert a limit order in buy side.
         ///      - Insert market order in sell to fill the limit order fully.
         /// Acceptance Criteria:
         ///      - the claim should happen for the filled amount.
