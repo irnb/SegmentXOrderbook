@@ -63,25 +63,89 @@ contract PairTest is Test {
         ///      - The all checks in the scenario 1 should get passed.
         ///      - user should receive the correct amount of baseToken for getting matched
         ///      - the pricePoint should update correctly in both sides.
+        ///      - latestPricePoint should update correctly.
 
         /// @NOTE Scenario 6 => Insert a limit taker order in sell side.
         /// Acceptance Criteria:
         ///      - The all checks in the scenario 1 should get passed.
         ///      - user should receive the correct amount of quoteToken for getting matched
         ///      - the pricePoint should update correctly in both sides.
+        ///      - latestPricePoint should update correctly.
 
-        
     }
 
     function test_MarketOrder() public {
-        // TODO
+        /// @NOTE Scenario 1 => Insert a market maker order in buy side.
+        /// Pre-requisite:
+        ///      - Insert a limit order in sell side.
+        /// Acceptance Criteria:
+        ///      - Token transferred to the contract with the correct amount.
+        ///      - the baseToken should get transferred to the user address.
+        ///      - fee should calculate correctly based on the TakerFee.
+        ///      - the latestPricePoint should update correctly.
+        ///      - the pricePoint should update correctly.
+        ///      - the orderID should get incremented correctly.
+
+        /// @NOTE Scenario 2 => Insert a market maker order in sell side.
+        /// Pre-requisite:
+        ///      - Insert a limit order in buy side.
+        /// Acceptance Criteria:
+        ///      - Token transferred to the contract with the correct amount.   
+        ///      - the quoteToken should get transferred to the user address.
+        ///      - fee should calculate correctly based on the TakerFee.
+        ///      - the latestPricePoint should update correctly.
+        ///      - the pricePoint should update correctly.
+        ///      - the orderID should get incremented correctly.
+
+
     }
 
     function test_CancelOrder() public {
-        // TODO
+        /// @NOTE Scenario 1 => Cancel a non filled limit order in buy side.
+        /// Pre-requisite:
+        ///      - Insert a limit order in buy side.
+        /// Acceptance Criteria:
+        ///      - Update the order status to cancelled.
+        ///      - Transfer the token back to the user address.
+        ///      - Update the pricePoint correctly.
+        ///      - Update the latestPricePoint correctly.
+        ///      - Update the cancellation trees correctly.
+        ///      - Emit the correct event.
+
+        /// @NOTE Scenario 2 => Cancel a partially filled limit order in sell side.
+        /// Pre-requisite:
+        ///      - Insert a limit order in sell side.
+        ///      - Insert market order in buy to fill the limit order partially.
+        /// Acceptance Criteria:
+        ///      - the scenario 1 checks should get passed.
+        ///      - the claim should happen for the filled amount. 
+        ///      - the base token should get transferred to the user address for claim.
+        ///      - the maker fee should get reduced from the claim amount.
+
+        /// @NOTE Scenario 3 => Cancel a fully filled limit order in buy side.
+        /// Pre-requisite:
+        ///      - Insert a limit order in buy side.
+        ///      - Insert market order in sell to fill the limit order fully.
+        /// Acceptance Criteria:
+        ///      - the scenario 1 checks should get passed.
+        ///      - the claim should happen for the filled amount.
+        ///      - the quote token should get transferred to the user address for claim.
+        ///      - the maker fee should get reduced from the claim amount.
+
+
     }
 
     function test_ClaimOrder() public {
-        // TODO
+        // @NOTE Scenario 1 => Claim a fully filled limit order in buy side.
+        /// Pre-requisite:
+        ///      - Insert a limit order in buy side.    
+        ///      - Insert market order in sell to fill the limit order fully.
+        /// Acceptance Criteria:
+        ///      - the claim should happen for the filled amount.
+        ///      - the base token should get transferred to the user address for claim.
+        ///      - the maker fee should get reduced from the claim amount.
+        ///      - the order status should get updated to claimed.
+        ///      - the pricePoint should get updated correctly.
+        ///      - the correct event should get emitted.
     }
 }
