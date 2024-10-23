@@ -27,7 +27,9 @@ contract PairTest is Test {
         uint24 makerFee_ = 10;
         uint24 takerFee_ = 20;
 
-        uint256 priceStep = 5 * 10 ** 5; // 0.5 USDT => 0.5 * 10 ** 6 == 5 * 10 ** 5 
+        uint256 priceStep = 5 * 10 ** 6; // 5 USDT
+
+        unit256 initialPricePoint = 2000 * 10 ** 6; // 2000 USDT
 
         pair = new Pair(
             address(baseToken),

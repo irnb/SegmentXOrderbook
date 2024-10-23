@@ -6,6 +6,8 @@ import "../lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol"
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./lib/mvp/SegmentedSegmentTree.sol";
 import "./lib/mvp/Math.sol";
+import {console2} from "../lib/forge-std/src/Test.sol";
+
 
 contract Pair {
     using SafeERC20 for IERC20;
@@ -205,7 +207,8 @@ contract Pair {
         uint256 priceStep_,
         uint24 makerFee_,
         uint24 takerFee_,
-        address governanceTreasury_
+        address governanceTreasury_,
+        uint256 initialPrice_
     ) {
         _baseToken = IERC20(baseTokenAddress_);
         _quoteToken = IERC20(quoteTokenAddress_);
@@ -218,6 +221,8 @@ contract Pair {
         takerFee = takerFee_;
 
         governanceTreasury = governanceTreasury_;
+
+        latestTradePrice = initialPrice_;
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -362,9 +367,13 @@ contract Pair {
         (MatchedPricePoint[] memory matchedPricePoints, uint8 matchFoundCount) =
             _findMatchedPricePoints(isBuy, latestTradePrice, amount);
 
+        console2.logString("here 1");
+
         if (matchFoundCount == 0) {
             revert NotEnoughLiquidity();
         }
+
+        console2.logString("here 2");
 
         uint256 remainingAmount = amount;
         uint256 matchedAmountForTransfer = 0;
