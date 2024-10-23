@@ -1,11 +1,5 @@
 [![Whitepaper](https://img.shields.io/badge/WhitePaper-Link-blue)](https://whitepaper.multipool.finance/)
-[![CI (Compile, Test, ...)](https://github.com/Multipool-Finance/core/actions/workflows/ci.yml/badge.svg)](https://github.com/Multipool-Finance/core/actions/workflows/ci.yml)
-[![Discord](https://img.shields.io/static/v1?logo=discord&label=discord&message=Join&color=blue)](https://discord.gg/TBD)
-[![Twitter](https://img.shields.io/static/v1?logo=twitter&label=twitter&message=Follow&color=blue)](https://twitter.com/multipoolfi)
-
-# MultiPool Finance SmartContracts
-
-![Multipool Finance](./doc/cover.webp)
+[![CI (Compile, Test, ...)](https://github.com/irnb/onchain-matcher/actions/workflows/ci.yml/badge.svg)](https://github.com/Multipool-Finance/core/actions/workflows/ci.yml)
 
 
 ## Table of Contents
